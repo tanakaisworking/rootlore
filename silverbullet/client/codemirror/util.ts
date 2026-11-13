@@ -11,6 +11,7 @@ import type { DecorationSet } from "@codemirror/view";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import type { Client } from "../client.ts";
 import { createIconElement } from "../lib/icon.ts";
+import { programmaticSelection } from "./vault_web_programmatic_selection.ts";
 
 type LinkOptions = {
   text: string;
@@ -179,13 +180,18 @@ export function checkRangeSubset(
 }
 
 export const readOnlyCursorActive = StateField.define<boolean>({
-  create(state) {
-    const { from, to } = state.selection.main;
-    return from !== 0 || to !== 0;
+  // vault-web: 作られた時点のカーソルは、読む人が置いたものではない（ページを開いたときの位置や、
+  // 読むだけの設定を後から組み込んだときの位置）。上流は先頭以外なら置いたとみなすが、
+  // それだと開いただけで最初の見出しの `##` が出るので、常に「置いていない」から始める
+  create() {
+    return false;
   },
   update(value, tr) {
     if (value) {
       return true;
+    }
+    if (tr.annotation(programmaticSelection)) {
+      return false;
     }
     // Treat the cursor as active once a transaction *actually moves* the
     // selection. We compare start/end positions because widgets dispatch a

@@ -37,6 +37,7 @@ import {
   forceParseVisibleRegion,
 } from "./codemirror/editor_state.ts";
 import { externalSource } from "./codemirror/external_presence.ts";
+import { programmaticSelection } from "./codemirror/vault_web_programmatic_selection.ts";
 import { luaDirectivePageName } from "./vault_web_trust.ts";
 import { renderFolderPage } from "./vault_web_folder.ts";
 import {
@@ -1058,6 +1059,7 @@ export class ContentManager {
           y: "start",
           yMargin: 5,
         }),
+        annotations: programmaticSelection.of(true),
       });
 
       return;
@@ -1081,6 +1083,7 @@ export class ContentManager {
     if (pageState.selection?.anchor) {
       this.client.editorView.dispatch({
         selection: pageState.selection,
+        annotations: programmaticSelection.of(true),
       });
       adjustedPosition = true;
     }
@@ -1101,6 +1104,7 @@ export class ContentManager {
       this.client.editorView.dispatch({
         selection: { anchor: initialCursorPos },
         scrollIntoView: true,
+        annotations: programmaticSelection.of(true),
       });
     }
   }
