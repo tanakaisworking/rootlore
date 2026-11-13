@@ -1,0 +1,1976 @@
+// vault-web: 標準の見た目（main.scss の最後で読む）。Obsidian の標準の見た目に寄せて、自分たちで書いたもの。
+// 白か黒に近い背景、薄い境界線、紫のアクセント、小さめの文字のサイドバー。日本語のゴシックで行間は広め。
+
+$vw-sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+$vw-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+
+html {
+  --ui-font: #{$vw-sans};
+  --editor-font: #{$vw-sans};
+  --editor-width: 720px;
+
+  // テーマカラー。設定のページで選んだ色は --vw-accent… として html の style に入る
+  // （client/vault_web_accent.ts）。なければ標準の紫
+  --ui-accent-color: var(--vw-accent, #7f6df2);
+  --ui-accent-contrast-color: var(--vw-accent-contrast, #fff);
+  --ui-accent-text-color: var(--vw-accent-text-light, #6a55e0);
+  --link-color: var(--vw-accent-text-light, #6a55e0);
+  --link-missing-color: var(--vw-link-missing-light, #a99be6);
+  --meta-color: #8a6d3b;
+  --meta-subtle-color: #ababab;
+  --subtle-color: #5c5c5c;
+  --subtle-background-color: rgba(0, 0, 0, 0.045);
+  --ui-surface-border-color: #e3e3e3;
+  --ui-surface-hover-background-color: rgba(0, 0, 0, 0.055);
+  --highlight-color: rgba(255, 208, 0, 0.4);
+
+  // ボタンの基準。アプリの中の「押せるもの」は、すべてこの変数で作る。
+  // スキンを作るときは、ここを差し替えれば全体が変わる
+  --vw-button-radius: 8px;
+  --vw-button-padding-y: 9px;
+  --vw-button-padding-x: 16px;
+  --vw-button-font-size: 14px;
+  --vw-button-font-weight: 600;
+  --vw-button-gap: 8px;
+  // 小さいボタン（サイドバーの中など）
+  --vw-button-small-radius: 6px;
+  --vw-button-small-padding-y: 6px;
+  --vw-button-small-padding-x: 12px;
+  --vw-button-small-font-size: 12px;
+
+  --root-background-color: #fff;
+  --root-color: #222;
+  --top-background-color: #fff;
+  --top-border-color: #e3e3e3;
+  --panel-background-color: #f6f6f6;
+  --panel-border-color: #e3e3e3;
+  --bhs-background-color: #fff;
+  --modal-background-color: #fff;
+  --modal-help-background-color: #f6f6f6;
+  --modal-selected-option-background-color: rgba(0, 0, 0, 0.07);
+  --modal-selected-option-color: var(--root-color);
+
+  --action-button-color: #6f6f6f;
+  --action-button-hover-color: var(--root-color);
+  --action-button-active-color: var(--ui-accent-color);
+
+  --editor-caret-color: var(--ui-accent-color);
+  --editor-selection-background-color: rgba(var(--vw-accent-rgb, 127, 109, 242), 0.2);
+  --editor-heading-color: inherit;
+  --editor-list-bullet-color: #ababab;
+  --editor-wiki-link-page-background-color: transparent;
+  --editor-wiki-link-color: #ababab;
+  --editor-hashtag-background-color: rgba(var(--vw-accent-rgb, 127, 109, 242), 0.1);
+  --editor-hashtag-color: var(--ui-accent-text-color);
+  --editor-hashtag-border-color: transparent;
+  --editor-table-head-background-color: transparent;
+  --editor-table-head-color: inherit;
+  --editor-table-even-background-color: rgba(0, 0, 0, 0.025);
+  --editor-blockquote-background-color: transparent;
+  --editor-blockquote-color: inherit;
+  --editor-blockquote-border-color: var(--ui-accent-color);
+  --editor-code-background-color: rgba(0, 0, 0, 0.045);
+  --editor-frontmatter-background-color: rgba(0, 0, 0, 0.03);
+  --editor-widget-background-color: rgba(0, 0, 0, 0.03);
+}
+
+@mixin vw-dark {
+  --ui-accent-color: var(--vw-accent, #7f6df2);
+  --ui-accent-contrast-color: var(--vw-accent-contrast, #fff);
+  --ui-accent-text-color: var(--vw-accent-text-dark, #a68af9);
+  --link-color: var(--vw-accent-text-dark, #a68af9);
+  --link-missing-color: var(--vw-link-missing-dark, #7d6bb3);
+  --meta-color: #c9a26b;
+  --meta-subtle-color: #6a6a6a;
+  --subtle-color: #a3a3a3;
+  --subtle-background-color: rgba(255, 255, 255, 0.055);
+  --ui-surface-border-color: #333;
+  --ui-surface-hover-background-color: rgba(255, 255, 255, 0.07);
+
+  --root-background-color: #1e1e1e;
+  --root-color: #dadada;
+  --top-background-color: #1e1e1e;
+  --top-border-color: #333;
+  --panel-background-color: #262626;
+  --panel-border-color: #333;
+  --bhs-background-color: #1e1e1e;
+  --modal-background-color: #262626;
+  --modal-help-background-color: #2a2a2a;
+  --modal-selected-option-background-color: rgba(255, 255, 255, 0.09);
+  --modal-selected-option-color: var(--root-color);
+
+  --action-button-color: #999;
+  --action-button-hover-color: var(--root-color);
+  --action-button-active-color: var(--ui-accent-text-color);
+
+  --editor-caret-color: var(--ui-accent-text-color);
+  --editor-selection-background-color: rgba(var(--vw-accent-rgb, 127, 109, 242), 0.3);
+  // 元の暗い配色が上書きしてしまう値は、ここでも同じものを指定し直す
+  --highlight-color: rgba(255, 208, 0, 0.3);
+  --editor-heading-color: inherit;
+  --editor-wiki-link-page-background-color: transparent;
+  --editor-hashtag-color: var(--ui-accent-text-color);
+  --editor-hashtag-border-color: transparent;
+  --editor-table-head-background-color: transparent;
+  --editor-table-head-color: inherit;
+  --editor-blockquote-background-color: transparent;
+  --editor-blockquote-color: inherit;
+  --editor-blockquote-border-color: var(--ui-accent-color);
+  --editor-list-bullet-color: #6a6a6a;
+  --editor-wiki-link-color: #6a6a6a;
+  --editor-hashtag-background-color: rgba(var(--vw-accent-rgb, 127, 109, 242), 0.18);
+  --editor-table-even-background-color: rgba(255, 255, 255, 0.03);
+  --editor-code-background-color: rgba(255, 255, 255, 0.06);
+  --editor-frontmatter-background-color: rgba(255, 255, 255, 0.035);
+  --editor-widget-background-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="dark"] {
+  @include vw-dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]):has(body.sb-standalone) {
+    @include vw-dark;
+  }
+}
+
+// 本文
+#sb-main .cm-editor {
+  font-size: 16px;
+
+  .cm-content {
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    padding-top: 28px;
+    padding-bottom: 120px;
+  }
+
+  .sb-line-h1,
+  .sb-line-h2,
+  .sb-line-h3,
+  .sb-line-h4 {
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  // 見出しの上に余白を置く。元の作りは 2px しか空かず、フロントマターや前の段落に
+  // くっついて見える（padding を使う。CodeMirror は行の margin を高さに数えない）
+  .sb-line-h1 {
+    font-size: 1.7em;
+    padding-top: 0.5em;
+    padding-bottom: 0.1em;
+  }
+
+  .sb-line-h2 {
+    font-size: 1.4em;
+    padding-top: 0.7em;
+    padding-bottom: 0.05em;
+  }
+
+  .sb-line-h3 {
+    font-size: 1.2em;
+    padding-top: 0.5em;
+  }
+
+  .sb-line-h4 {
+    font-size: 1.05em;
+    padding-top: 0.35em;
+  }
+
+  .hashtag {
+    border-radius: 999px;
+    padding: 0 0.5em;
+  }
+
+  // コードだけは等幅のまま
+  .sb-code,
+  .sb-line-code,
+  .sb-code-info {
+    font-family: #{$vw-mono};
+    font-size: 0.88em;
+    letter-spacing: 0;
+    line-height: 1.6;
+  }
+}
+
+// 上部のバー: 白（黒）地に薄い線。タイトルは控えめにする
+#sb-top {
+  .main .inner .wrapper {
+    align-items: center;
+  }
+
+  #sb-current-page .vw-page-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  // サイドバーの上の部分はサイドバーと同じ色にして、一続きに見せる
+  .sb-nav-spacer,
+  .vw-sidebar-rail-spacer {
+    background: var(--panel-background-color);
+    border-right: 1px solid var(--panel-border-color);
+  }
+}
+
+// サイドバー（ノートの一覧）: 小さめの文字と低めの行、角の丸いハイライト
+#sb-main .sb-nav-root-lhs,
+#sb-main .sb-nav-root-rhs {
+  --sb-nav-row-height: 30px;
+  font-size: 14px;
+  border-color: var(--panel-border-color);
+
+  .sb-nav-header {
+    padding: 10px 10px 8px;
+  }
+
+  .sb-nav-title {
+    font-size: 13px;
+  }
+
+  .sb-segment {
+    font-size: 12px;
+    border-radius: 4px;
+  }
+
+  .sb-tree .sb-nav-row {
+    contain-intrinsic-size: auto 30px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    margin: 0 6px;
+    border-radius: 5px;
+    line-height: 20px;
+  }
+
+  .sb-nav-row:hover {
+    background-color: var(--ui-surface-hover-background-color);
+  }
+
+  .sb-nav-row.sb-nav-folder {
+    --sb-nav-band: transparent;
+    font-weight: 500;
+  }
+
+  .sb-nav-row[aria-current="page"] {
+    border-radius: 5px;
+    background-color: var(--modal-selected-option-background-color);
+    color: var(--root-color);
+
+    // 元は左端にアクセント色の縦線。Obsidian と同じく背景の色だけにする
+    &::before {
+      display: none;
+    }
+  }
+
+  .sb-nav-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  // 一覧を操作していないときは、キーボード用の選択を目立たせない
+  &:not(:focus-within) .sb-nav-selected:not([aria-current="page"]) {
+    background-color: transparent;
+  }
+}
+
+// 左のサイドバーを閉じたときの細い帯（components/vault_web_sidebar_rail.tsx）
+#sb-main .vw-sidebar-rail {
+  flex: 0 0 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 8px;
+  box-sizing: border-box;
+  background: var(--panel-background-color);
+  border-right: 1px solid var(--panel-border-color);
+}
+
+// 上部のバーのボタンは、左のサイドバーと細い帯に移した（vault_web_sidebar_actions.tsx）。
+// 上部のバーに残すのは右端の「編集」だけ（editor_ui.tsx が絞って渡す）
+#sb-top .sb-actions {
+  flex: none;
+  margin-left: auto;
+
+  &:empty {
+    display: none;
+  }
+}
+
+#sb-main .vw-sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: -4px -4px 0;
+
+  .vw-sidebar-collapse {
+    margin-left: auto;
+  }
+}
+
+#sb-main .vw-sidebar-rail-open,
+#sb-main .vw-sidebar-action {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--subtle-color);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--ui-surface-hover-background-color);
+    color: inherit;
+  }
+}
+
+#sb-top .vw-sidebar-rail-spacer {
+  flex: 0 0 44px;
+}
+
+// 左のサイドバーと細い帯の下: 設定とアカウントのボタン（components/vault_web_dialogs.tsx）
+#sb-main .vw-sidebar-footer {
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  border-top: 1px solid var(--panel-border-color);
+}
+
+#sb-main .sb-nav-root-lhs.sb-nav-resizable .vw-sidebar-footer {
+  margin-right: 6px;
+}
+
+// まだ GitHub に繋いでいないとき、左のサイドバーの下に出す連携の案内
+// （components/vault_web_connect_card.tsx）。押すとアカウントのページを開く
+#sb-main .vw-sidebar-connect {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 8px 0;
+  padding: 10px;
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: 10px;
+  background: var(--subtle-background-color);
+  color: var(--root-color);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: var(--ui-accent-color);
+    background: var(--ui-surface-hover-background-color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-accent-color);
+    outline-offset: 1px;
+  }
+}
+
+#sb-main .vw-sidebar-connect-icon,
+#sb-main .vw-sidebar-connect-arrow {
+  flex: none;
+  color: var(--subtle-color);
+}
+
+#sb-main .vw-sidebar-connect-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+#sb-main .vw-sidebar-connect-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  // 日本語は単語の途中で折り返さない（「はじ／める」を避ける）
+  line-break: strict;
+  word-break: auto-phrase;
+}
+
+#sb-main .vw-sidebar-connect-desc {
+  color: var(--subtle-color);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+#sb-main .vw-sidebar-rail-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-bottom: 8px;
+}
+
+// 本文の文字の大きさ（設定画面で選ぶ。標準は上の 16px）
+html[data-vw-font-size="small"] #sb-main .cm-editor {
+  font-size: 14px;
+}
+
+html[data-vw-font-size="large"] #sb-main .cm-editor {
+  font-size: 18px;
+}
+
+// 設定のページとアカウントのページ。本文の代わりに出す（本文は隠す）
+#sb-main:has(> .vw-page) > #sb-editor {
+  display: none;
+}
+
+#sb-main > .vw-page {
+  flex: 2;
+  height: 100%;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--root-background-color);
+  color: var(--root-color);
+}
+
+// ホーム・設定・アカウントのページの外枠（components/vault_web_page_frame.tsx）。
+// 幅と余白は、ふつうのノートの本文（.cm-content: --editor-width、左右 20px、上 28px）にそろえる
+.vw-page-content {
+  box-sizing: border-box;
+  max-width: var(--editor-width);
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.vw-page-heading {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+// ホーム（vault に「ホーム」のノートがないとき）。components/vault_web_home_view.tsx
+.vw-home {
+  a {
+    color: var(--ui-accent-text-color);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.vw-home-section {
+  margin-top: 32px;
+}
+
+.vw-home-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  h2 {
+    flex: 1;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+  }
+}
+
+.vw-home-note,
+.vw-home-summary {
+  margin: 0 0 10px;
+  color: var(--subtle-color);
+  font-size: 13px;
+}
+
+// ホームの「全画面で開く」など、控えめなボタン。小さいボタンの変数を使う
+.vw-home-link-button {
+  padding: var(--vw-button-small-padding-y) var(--vw-button-small-padding-x);
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: var(--vw-button-small-radius);
+  background: transparent;
+  color: var(--root-color);
+  font: inherit;
+  font-size: var(--vw-button-small-font-size);
+  font-weight: var(--vw-button-font-weight);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+
+  &:hover {
+    border-color: var(--subtle-color);
+    background: var(--ui-surface-hover-background-color);
+  }
+}
+
+.vw-home-commits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vw-home-commit {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ui-surface-border-color);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.vw-home-commit-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vw-home-commit-date {
+  flex: none;
+  color: var(--subtle-color);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vw-home-commit-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vw-home-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--subtle-color);
+
+  s {
+    color: var(--subtle-color);
+  }
+}
+
+.vw-home-file-more {
+  font-size: 12px;
+}
+
+.vw-home-graph-scroll {
+  overflow-x: auto;
+}
+
+.vw-contrib {
+  display: block;
+}
+
+.vw-contrib-cell {
+  fill: var(--ui-accent-color);
+
+  &.vw-level-0 {
+    fill: var(--subtle-background-color);
+  }
+
+  &.vw-level-1 {
+    fill-opacity: 0.3;
+  }
+
+  &.vw-level-2 {
+    fill-opacity: 0.5;
+  }
+
+  &.vw-level-3 {
+    fill-opacity: 0.75;
+  }
+}
+
+.vw-contrib-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--subtle-color);
+  font-size: 12px;
+}
+
+.vw-graph-label {
+  fill: var(--subtle-color);
+  font-size: 10px;
+}
+
+.vw-growth {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.vw-growth-grid {
+  stroke: var(--ui-surface-border-color);
+  stroke-width: 1;
+}
+
+// 塗りの色と透け方は vault_web_home_view.tsx（フォルダごとのグラデーション）
+.vw-growth-plot {
+  fill: currentColor;
+  fill-opacity: 0.025;
+}
+
+.vw-growth-edge {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.vw-growth-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+}
+
+.vw-growth-swatch {
+  flex: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2px solid;
+  border-radius: 50%;
+  background: var(--subtle-background-color);
+}
+
+.vw-growth-folder {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vw-growth-size {
+  color: var(--subtle-color);
+  white-space: nowrap;
+}
+
+.vw-knowledge-map {
+  height: 420px;
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+// 「全画面で開く」。ホームのマップをそのまま画面いっぱいに広げる（サイドバーと上部のバーの上に重ねる）
+.vw-knowledge-map-full {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  background: var(--root-background-color);
+
+  .vw-knowledge-map {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+  }
+}
+
+.vw-knowledge-map-full-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--ui-surface-border-color);
+  font-weight: 700;
+}
+
+// 設定とアカウントのページ（外枠は .vw-page-content）
+.vw-dialog {
+  p {
+    margin: 0 0 10px;
+  }
+
+  a {
+    color: var(--ui-accent-text-color);
+  }
+}
+
+.vw-dialog-note,
+.vw-dialog-meta,
+.vw-account-sub {
+  color: var(--subtle-color);
+  font-size: 13px;
+}
+
+.vw-shortcuts {
+  margin: 0;
+  > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    padding: 6px 0;
+  }
+  dd { margin: 0; color: var(--subtle-color); }
+  kbd { font: inherit; white-space: nowrap; }
+}
+
+.vw-dialog-meta {
+  margin: 16px 0 0 !important;
+  overflow-wrap: anywhere;
+}
+
+// アカウントのページの接続欄（components/vault_web_dialogs.tsx の ConnectSection）
+.vw-connect-token {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--panel-border-color);
+
+  h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  label {
+    display: block;
+    margin: 12px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  input {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 4px;
+    padding: 9px 11px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 8px;
+    background: var(--root-background-color);
+    color: var(--root-color);
+    font: inherit;
+    font-size: 14px;
+  }
+
+  .sb-button {
+    margin-top: 16px;
+  }
+}
+
+.vw-connect-error {
+  margin: 12px 0 0 !important;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+// まだ GitHub に繋いでいないときのホーム（components/vault_web_home_view.tsx の DisconnectedHome）
+.vw-home-welcome {
+  margin-bottom: 8px;
+  padding: 22px 24px;
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: 12px;
+  background: var(--subtle-background-color);
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  p {
+    margin: 0 0 14px;
+    color: var(--subtle-color);
+    font-size: 14px;
+  }
+}
+
+// ホームの「GitHubに接続」。.sb-button-primary と同じ見た目を、変数で作る
+.vw-home-connect {
+  display: inline-block;
+  padding: var(--vw-button-padding-y) var(--vw-button-padding-x);
+  border-radius: var(--vw-button-radius);
+  background: var(--ui-accent-color);
+  color: var(--ui-accent-contrast-color) !important;
+  font-size: var(--vw-button-font-size);
+  font-weight: var(--vw-button-font-weight);
+  line-height: 1.4;
+  text-decoration: none !important;
+  transition: filter 0.15s;
+
+  &:hover {
+    filter: brightness(0.94);
+  }
+}
+
+.vw-home-welcome .vw-home-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+// 繋ぐ前の見本。実際のグラフと同じ形にして、何が出る場所かを伝える
+.vw-home-preview {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 3px;
+  max-width: 420px;
+  opacity: 0.55;
+
+  i {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: var(--ui-surface-border-color);
+
+    &[data-level="1"] { background: var(--ui-accent-color); opacity: 0.28; }
+    &[data-level="2"] { background: var(--ui-accent-color); opacity: 0.55; }
+    &[data-level="3"] { background: var(--ui-accent-color); opacity: 0.85; }
+  }
+}
+
+.vw-home-preview-growth {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 420px;
+  height: 90px;
+  padding-top: 8px;
+
+  span {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+    background: var(--ui-accent-color);
+    opacity: 0.35;
+  }
+}
+
+.vw-home-preview-list {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.vw-home-preview-map {
+  max-width: 420px;
+
+  svg {
+    width: 100%;
+    height: auto;
+    stroke: var(--ui-accent-color);
+    stroke-width: 1.5;
+    fill: none;
+    opacity: 0.7;
+
+    circle {
+      fill: var(--ui-accent-color);
+      stroke: none;
+      opacity: 0.5;
+    }
+  }
+}
+
+// サイドバー（navigator/ui/components/document_view.tsx）。まだ繋いでいないとき
+.vw-nav-disconnected {
+  padding: 12px 10px;
+  line-height: 1.7;
+
+  p {
+    margin: 0 0 8px;
+    font-size: 12px;
+  }
+}
+
+// サイドバーの「GitHubに接続」。小さいボタンの変数を使う
+.vw-nav-connect {
+  display: inline-block;
+  margin-top: 2px;
+  padding: var(--vw-button-small-padding-y) var(--vw-button-small-padding-x);
+  border-radius: var(--vw-button-small-radius);
+  background: var(--ui-accent-color);
+  color: var(--ui-accent-contrast-color) !important;
+  font-size: var(--vw-button-small-font-size);
+  font-weight: var(--vw-button-font-weight);
+  line-height: 1.4;
+  text-decoration: none !important;
+  transition: filter 0.15s;
+
+  &:hover {
+    filter: brightness(0.94);
+  }
+}
+
+// ボタン。SilverBullet の .sb-button（角丸2px・13px）を、うちの基準に揃える。
+// アプリの中の「押せるもの」は、すべてここか、ここで作った変数を使う
+#sb-main,
+.sb-modal,
+.vw-page {
+  .sb-button,
+  .sb-button-primary,
+  .sb-button-danger {
+    border-radius: var(--vw-button-radius);
+    padding: var(--vw-button-padding-y) var(--vw-button-padding-x);
+    font-size: var(--vw-button-font-size);
+    font-weight: var(--vw-button-font-weight);
+    line-height: 1.4;
+    transition: background-color 0.15s, border-color 0.15s, filter 0.15s;
+  }
+
+  // 主な操作（塗りつぶし）
+  .sb-button-primary {
+    border-color: transparent;
+    background: var(--ui-accent-color);
+    color: var(--ui-accent-contrast-color);
+
+    &:hover {
+      filter: brightness(0.94);
+    }
+  }
+
+  // 控えめな操作（枠だけ）。主な操作は class が "sb-button sb-button-primary" なので、ここで上書きしない
+  .sb-button:not(.sb-button-primary):not(.sb-button-danger) {
+    border-color: var(--ui-surface-border-color);
+    background: transparent;
+    color: var(--root-color);
+
+    &:hover {
+      background: var(--ui-surface-hover-background-color);
+    }
+  }
+
+  .sb-button-danger {
+    border-radius: var(--vw-button-radius);
+    padding: var(--vw-button-padding-y) var(--vw-button-padding-x);
+    font-size: var(--vw-button-font-size);
+    font-weight: var(--vw-button-font-weight);
+  }
+
+  // アイコンだけのボタン
+  .sb-button-icon {
+    border-radius: var(--vw-button-small-radius);
+  }
+}
+
+// フロントマターの表示（codemirror/frontmatter_folding.ts）。
+// 元の作りは「折りたたみました」の小さな印を出す前提で、上下 2px・左右 7px しか空きがない。
+// ノートの最初に必ず出るものなので、Notion のコールアウトのように、本文から少し離して置く
+#sb-main .cm-editor {
+  .cm-frontmatterFoldPlaceholder {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin: 6px 0 10px;
+    // 左右に余白を置き、角を丸める。上下は詰めて、`---` の行の高さを残さない
+    padding: 5px 12px !important;
+    border: 1px solid var(--ui-surface-border-color);
+    border-radius: 8px;
+    background: var(--subtle-background-color);
+    color: var(--subtle-color);
+    font-size: 0.86em;
+    line-height: 1.5;
+
+    &:hover {
+      border-color: var(--subtle-color);
+    }
+  }
+
+  .cm-frontmatterFoldStatus {
+    margin-left: 0;
+    font-size: 1em;
+    opacity: 1;
+  }
+
+  // 折りたたまれていないフロントマター（短いもの。既定では5行以下は折りたたまれない）。
+  // 素のままだと `---` が本文の一部のように見えるので、折りたたんだときと同じ囲みにする
+  .cm-line.sb-frontmatter {
+    padding-left: 12px;
+    padding-right: 12px;
+    background: var(--subtle-background-color);
+    color: var(--subtle-color);
+    font-size: 0.86em;
+    line-height: 1.5;
+  }
+
+  // 囲みの上下の角を丸める（最初の行と最後の行）
+  .cm-line.sb-frontmatter:first-of-type {
+    padding-top: 4px;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .cm-line.sb-frontmatter:last-of-type {
+    padding-bottom: 4px;
+    border-radius: 0 0 8px 8px;
+  }
+
+  // `---` の行は薄く、小さく
+  .cm-line.sb-frontmatter .sb-frontmatter-marker,
+  .cm-line.sb-frontmatter .cm-hmd-frontmatter {
+    color: var(--subtle-color);
+    opacity: 0.7;
+  }
+
+  .sb-frontmatter-marker {
+    padding-right: 0;
+    font-size: 0.85em;
+    opacity: 0.6;
+  }
+
+  // 折りたたんだフロントマターの中のタグは、コールアウトの中に小さく並べる
+  .cm-frontmatterFoldPlaceholder .sb-hashtag {
+    padding: 0 0.45em;
+    background: var(--ui-surface-hover-background-color);
+    color: var(--subtle-color);
+    font-size: 0.95em;
+  }
+}
+
+// 紹介のページ（components/vault_web_share_view.tsx）。文言は .vw-dialog の中に置く
+.vw-share {
+  .vw-share-lead {
+    margin: 0 0 8px;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .vw-share-text {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 8px;
+    background: var(--root-background-color);
+    color: var(--root-color);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  .vw-share-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .vw-share-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px;
+  }
+
+  // 紹介のページのリンク。ほかのボタンと同じ角丸・余白にする（中身が2段なので縦は広め）
+  .vw-share-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: var(--vw-button-padding-y) var(--vw-button-padding-x);
+    border: 1px solid var(--ui-surface-border-color);
+    border-radius: var(--vw-button-radius);
+    background: var(--root-background-color);
+    color: var(--root-color);
+    text-decoration: none;
+    transition: border-color 0.15s, background-color 0.15s;
+
+    &:hover {
+      border-color: var(--subtle-color);
+      background: var(--ui-surface-hover-background-color);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ui-accent-color);
+      outline-offset: 2px;
+    }
+  }
+
+  .vw-share-link-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--subtle-background-color);
+    color: var(--subtle-color);
+  }
+
+  .vw-share-link-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .vw-share-link-name {
+    font-weight: 600;
+  }
+
+  .vw-share-link-note {
+    color: var(--subtle-color);
+    font-size: 12px;
+  }
+}
+
+// スキルのページ（components/vault_web_skills_view.tsx）。内蔵のカタログを並べる
+.vw-skills {
+  .vw-skills-lead {
+    margin: 0 0 16px;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  // 未連携のときの案内。連携のカード（.vw-sidebar-connect）と同じ見た目にそろえる
+  .vw-skills-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--ui-surface-border-color);
+    border-radius: 10px;
+    background: var(--subtle-background-color);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  // カタログのまとまり（土台 / フォルダの決め方）。見出しと、なぜ分けているかの1行
+  .vw-skill-group + .vw-skill-group {
+    margin-top: 28px;
+  }
+
+  .vw-skill-group-head {
+    margin-bottom: 10px;
+  }
+
+  .vw-skill-group-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .vw-skill-group-note {
+    margin: 4px 0 0;
+    color: var(--subtle-color);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .vw-skill {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 10px;
+    background: var(--root-background-color);
+
+    & + .vw-skill {
+      margin-top: 12px;
+    }
+  }
+
+  .vw-skill-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .vw-skill-icon {
+    flex: none;
+    color: var(--subtle-color);
+  }
+
+  .vw-skill-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .vw-skill-name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .vw-skill-source {
+    color: var(--subtle-color);
+    font-size: 12px;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--root-color);
+      text-decoration: underline;
+    }
+  }
+
+  .vw-skill-badge {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    color: var(--ui-accent-color);
+    font-size: 12px;
+  }
+
+  .vw-skill-summary {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .vw-skill-does {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--subtle-color);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .vw-skill-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  // パスが長いスキル（johnny-decimal など）でも、出典と追加するを同じ行に残す
+  // （flex-wrap は折り返しを先に決めるので、basis を 0 にして縮む側にする）
+  .vw-skill-path {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--subtle-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vw-skill-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .vw-skill-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--subtle-color);
+    font-size: 12px;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--root-color);
+    }
+  }
+
+  .vw-skill-error {
+    margin: 0;
+    color: var(--ui-accent-color);
+    font-size: 12px;
+  }
+}
+
+// 要望のページ（components/vault_web_feedback_view.tsx）。送り方を2つ並べる
+.vw-feedback {
+  .vw-feedback-lead {
+    margin: 0 0 16px;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .vw-feedback-options {
+    display: grid;
+    gap: 8px;
+  }
+
+  // 紹介のページのリンク（.vw-share-link）と同じ見た目にそろえる
+  .vw-feedback-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: var(--vw-button-padding-y) var(--vw-button-padding-x);
+    border: 1px solid var(--ui-surface-border-color);
+    border-radius: var(--vw-button-radius);
+    background: var(--root-background-color);
+    color: var(--root-color);
+    text-decoration: none;
+    transition: border-color 0.15s, background-color 0.15s;
+
+    &:hover {
+      border-color: var(--subtle-color);
+      background: var(--ui-surface-hover-background-color);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ui-accent-color);
+      outline-offset: 2px;
+    }
+  }
+
+  .vw-feedback-option-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--subtle-background-color);
+    color: var(--subtle-color);
+  }
+
+  .vw-feedback-option-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .vw-feedback-option-name {
+    font-weight: 600;
+  }
+
+  .vw-feedback-option-note {
+    color: var(--subtle-color);
+    font-size: 12px;
+  }
+
+  // 紹介のページの投稿文（.vw-share-text）と同じ見た目にそろえる
+  .vw-feedback-text {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 8px;
+    background: var(--root-background-color);
+    color: var(--root-color);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: vertical;
+
+    &:focus-visible {
+      outline: 2px solid var(--ui-accent-color);
+      outline-offset: 1px;
+    }
+  }
+
+  .vw-feedback-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .vw-feedback-status {
+    color: var(--subtle-color);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
+.vw-dialog-section {
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid var(--panel-border-color);
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+// 並んだ選択肢（選んでいるものに色を付ける）
+.vw-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  button {
+    min-height: 34px;
+    padding: 4px 14px;
+    border: 1px solid var(--panel-border-color);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--ui-surface-hover-background-color);
+    }
+
+    &[aria-checked="true"] {
+      border-color: var(--ui-accent-color);
+      background: var(--ui-accent-color);
+      color: var(--ui-accent-contrast-color);
+    }
+  }
+}
+
+// テーマカラーの選択（components/vault_web_dialogs.tsx の AccentChoices）
+.vw-accents {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.vw-accent-swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--vw-swatch) content-box;
+  box-shadow: 0 0 0 1px var(--panel-border-color);
+  cursor: pointer;
+
+  &[aria-checked="true"] {
+    border-color: var(--root-background-color);
+    box-shadow: 0 0 0 2px var(--root-color);
+  }
+}
+
+.vw-accent-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 2px 12px 2px 4px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+
+  &[data-checked="true"] {
+    border-color: var(--root-color);
+  }
+
+  input {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+}
+
+.vw-confirm {
+  padding: 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 8px;
+}
+
+.vw-confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+// アカウントのページのカード（components/vault_web_dialogs.tsx の AccountPage）。
+// カード全体を押すと GitHub のプロフィールやリポジトリを新しいタブで開く
+.vw-dialog a.vw-card {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 10px;
+  background: var(--root-background-color);
+  color: var(--root-color);
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s;
+
+  &:hover {
+    border-color: var(--subtle-color);
+    background: var(--ui-surface-hover-background-color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-accent-color);
+    outline-offset: 2px;
+  }
+}
+
+.vw-card-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--subtle-color);
+  font-size: 13px;
+}
+
+.vw-card-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0 !important;
+}
+
+.vw-profile {
+  align-items: center;
+  gap: 14px;
+}
+
+.vw-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ui-accent-color);
+  color: var(--ui-accent-contrast-color);
+  font-size: 22px;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--panel-border-color);
+}
+
+.vw-profile-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vw-profile-name {
+  font-size: 17px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.vw-profile-login {
+  color: var(--subtle-color);
+  font-size: 14px;
+}
+
+.vw-repo {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vw-repo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  > svg {
+    flex: none;
+    color: var(--subtle-color);
+  }
+}
+
+.vw-repo-name {
+  min-width: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+.vw-repo-owner {
+  color: var(--subtle-color);
+}
+
+.vw-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 999px;
+  color: var(--subtle-color);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.vw-repo-desc {
+  color: var(--subtle-color);
+  font-size: 14px;
+}
+
+.vw-repo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--subtle-color);
+  font-size: 13px;
+
+  > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
+// 左のサイドバーと細い帯は、上部のバーの高さぶん上に伸ばし、画面のいちばん上から始める。
+// 上部のバーの左側（.sb-nav-spacer / .vw-sidebar-rail-spacer）は、ページ名の位置を本文に
+// そろえるために残し、その上にサイドバーを重ねる（上部のバーの z-index は 20）。
+// スマートフォンでは、サイドバーは本文の上に重なって開くので、元のまま
+@media only screen and (min-width: 601px) {
+  #sb-main .sb-nav-root-lhs,
+  #sb-main .vw-sidebar-rail {
+    --vw-top-total: calc(
+      var(--sb-top-height) + var(--sb-standalone-top-offset, 0px)
+    );
+    position: relative;
+    z-index: 21;
+    height: calc(100% + var(--vw-top-total));
+    margin-top: calc(-1 * var(--vw-top-total));
+    padding-top: var(--sb-standalone-top-offset, 0px);
+    box-sizing: border-box;
+  }
+
+  #sb-main .vw-sidebar-rail {
+    padding-top: calc(8px + var(--sb-standalone-top-offset, 0px));
+  }
+}
+
+// スマートフォンでは帯を出さない（上部のボタンで開く）
+@media only screen and (max-width: 600px) {
+  #sb-main .vw-sidebar-rail,
+  #sb-top .vw-sidebar-rail-spacer {
+    display: none;
+  }
+}
+
+// 絞り込み欄の左の見出し（「開く」）は出さない。ノートの上下の欄の見出しは同じクラスなので残す
+.sb-nav-header-row > .sb-nav-title {
+  display: none;
+}
+
+// 置き場所の切り替え（右・下・別ウィンドウなど）と、定義を開くボタンは使わない。
+// ノートの上下の欄を閉じると、コマンドパレットなしでは戻せないので、× も出さない（折りたたみは残す）
+.sb-dock-menu-anchor,
+.sb-nav-definition,
+.sb-page-widget-bar .sb-nav-close {
+  display: none !important;
+}
+
+// 画面右上の通知（「新しいバージョンがあります」など）。元は角が四角く詰まっていて、
+// ボタンが標準の暗いグレーのため、ダークモードでは通知の背景に沈んで見えにくい。
+// 角を丸めて余白と影を足し、ボタンはテーマカラーで塗る
+.sb-notifications {
+  > div {
+    gap: 12px;
+    padding: 8px 8px 8px 14px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .sb-notification-actions .sb-button {
+    --color: var(--ui-accent-contrast-color);
+    --background-color: var(--ui-accent-color);
+    --hover-background-color: var(--ui-accent-color);
+    --border-color: var(--ui-accent-color);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+}
+
+html[data-theme="dark"] .sb-notifications > div {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+// ノートの検索などの窓（navigator の modal）を、画面の上寄り（上から 100px）から中央に置く。
+// 窓の高さは候補の数で伸び縮みするので、候補がいっぱい（7行）のときにちょうど中央になる位置に
+// 上端を固定する（打つたびに入力欄が上下に動かないように）。スマートフォンは上部のバーの下のまま
+@media only screen and (min-width: 601px) {
+  .sb-modal.sb-modal-centered {
+    --vw-modal-full-height: 380px;
+    top: max(24px, calc(50% - var(--vw-modal-full-height) / 2)) !important;
+    border-radius: 12px;
+  }
+}
+
+// 「編集」で上に重ねる、ノートを直す画面（components/vault_web_note_editor.tsx）。
+// 本文の欄は、ふつうのノートの本文と同じ幅と字にそろえる
+.vw-note-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  background: var(--root-background-color);
+}
+
+.vw-note-editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--ui-surface-border-color);
+}
+
+.vw-note-editor-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.vw-note-editor-dirty {
+  margin-left: 8px;
+  color: var(--subtle-color);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.vw-note-editor-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.vw-note-editor-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ui-surface-border-color);
+  font-size: 13px;
+
+  span {
+    flex: 1;
+  }
+}
+
+.vw-note-editor-notice-warn {
+  background: color-mix(in srgb, var(--ui-accent-color) 12%, transparent);
+}
+
+.vw-note-editor-text {
+  flex: 1;
+  width: 100%;
+  max-width: calc(var(--editor-width) + 40px);
+  margin: 0 auto;
+  padding: 28px 20px;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  font-family: var(--editor-font);
+  font-size: 16px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 600px) {
+  .vw-note-editor-bar {
+    flex-wrap: wrap;
+  }
+
+  .vw-note-editor-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+// 読む画面を保ち、本文だけをその場で編集する。
+.vw-inline-editor-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: none;
+  .sb-button { padding: 4px 10px; font-size: 13px; }
+}
+.vw-inline-editor-status { font-size: 12px; color: var(--subtle-color); white-space: nowrap; }
+#sb-top:has(.vw-inline-editor-controls) .sb-actions { display: none; }
+@media (max-width: 600px) {
+  .vw-inline-editor-status { display: none; }
+  .vw-inline-editor-controls .sb-button { padding: 4px 6px; }
+}
+
+// --- .base（Obsidian の Bases）を表で出す画面（vault_web_base_viewer.tsx） ---
+// 色は上の変数だけを使う（明るい表示と暗い表示の両方でそのまま合う）
+.vw-base-viewer {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  color: var(--root-color);
+  background: var(--root-background-color);
+}
+// 幅と余白は、ほかのページ（.vw-page-content）とふつうのノートの本文にそろえる
+.vw-base {
+  box-sizing: border-box;
+  max-width: var(--editor-width);
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  font-family: var(--ui-font);
+}
+.vw-base-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  h1 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+}
+.vw-base-source-toggle,
+.vw-base-tab {
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: var(--vw-button-small-radius);
+  padding: var(--vw-button-small-padding-y) var(--vw-button-small-padding-x);
+  font: inherit;
+  font-size: 13px;
+  color: var(--root-color);
+  background: transparent;
+  cursor: pointer;
+  &:hover { background: var(--ui-surface-hover-background-color); }
+}
+.vw-base-source-toggle { flex: none; }
+.vw-base-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.vw-base-tab.is-active {
+  border-color: var(--ui-accent-color);
+  color: var(--ui-accent-text-color);
+  font-weight: 600;
+}
+.vw-base-notice {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: 8px;
+  background: var(--subtle-background-color);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--subtle-color);
+  summary { cursor: pointer; }
+  ul { margin: 8px 0 0; padding-left: 20px; }
+  p { margin: 0; }
+}
+.vw-base-notice-error { color: var(--root-color); }
+.vw-base-notice-detail {
+  margin-top: 6px !important;
+  font-family: var(--editor-font);
+  font-size: 12px;
+  color: var(--subtle-color);
+  overflow-wrap: anywhere;
+}
+.vw-base-count,
+.vw-base-status {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--subtle-color);
+}
+.vw-base-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: 10px;
+}
+.vw-base-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.5;
+  th,
+  td {
+    padding: 9px 14px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--ui-surface-border-color);
+    overflow-wrap: anywhere;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--subtle-color);
+    background: var(--panel-background-color);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody:not(:last-child) tr:last-child td { border-bottom: 1px solid var(--ui-surface-border-color); }
+  tbody tr:hover td { background: var(--ui-surface-hover-background-color); }
+}
+.vw-base-group th {
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--subtle-background-color);
+}
+.vw-base-group-count {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--subtle-color);
+}
+.vw-base-link {
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: 500;
+  &:hover { text-decoration: underline; }
+}
+.vw-base-source {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--ui-surface-border-color);
+  border-radius: 10px;
+  background: var(--subtle-background-color);
+  font-family: var(--editor-font);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .vw-base-header h1 { font-size: 22px; }
+}

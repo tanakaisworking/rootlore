@@ -1,0 +1,287 @@
+import type { ComponentChildren } from "preact";
+import { useEffect, useRef, useState } from "preact/hooks";
+import type { Client } from "../../../client.ts";
+import { closeView, setViewCollapsed } from "../../navigator.ts";
+import {
+  activateOnKey,
+  showsBody,
+  toggleCollapsed,
+} from "../../page_widget_logic.ts";
+import type { ViewMeta } from "../../types.ts";
+import { CloseIcon, DefinitionIcon } from "./chrome_icons.tsx";
+import { DockMenu } from "./dock_menu.tsx";
+import { LoadingIndicator } from "./loading_indicator.tsx";
+import { t } from "../../../vault_web_i18n.ts";
+
+/**
+ * The strip above a page widget: a collapse triangle and its title on the left,
+ * whatever tools it contributes plus the dock menu and × on the right. Shared
+ * by both kinds of widget so a content view and a row view are framed
+ * identically.
+ *
+ * This component is what makes collapse *page-docked only* with no
+ * special-casing: a sidebar or the modal builds its own header in
+ * `nav_root.tsx` and never comes through here.
+ */
+function WidgetBar({
+  client,
+  name,
+  meta,
+  slot,
+  error,
+  loading,
+  tools,
+  collapsed,
+  onToggleCollapsed,
+}: {
+  client: Pick<Client, "navigate">;
+  name: string;
+  meta: ViewMeta;
+  slot: string;
+  error?: string;
+  loading?: boolean;
+  tools?: ComponentChildren;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}) {
+  const label = meta.label ?? meta.title;
+  return (
+    <div
+      className="sb-page-widget-bar"
+      title={error ? `${t("エラー", "Error")}: ${error}` : undefined}
+    >
+      <span className="sb-page-widget-heading">
+        <button
+          type="button"
+          className="sb-page-widget-fold"
+          aria-expanded={!collapsed}
+          title={collapsed ? t(`${label}を開く`, `Expand ${label}`) : t(`${label}を折りたたむ`, `Collapse ${label}`)}
+          aria-label={collapsed ? t(`${label}を開く`, `Expand ${label}`) : t(`${label}を折りたたむ`, `Collapse ${label}`)}
+          onClick={onToggleCollapsed}
+        >
+          ▾
+        </button>
+        {/* `.sb-nav-title` is the panel header's own label class, so the
+            title reads identically in every dock; only the strip around it
+            belongs to the page widget. The title doubles as the fold's
+            larger click target -- it carried no behaviour of its own, so
+            nothing is swallowed to get it. */}
+        <span
+          className="sb-nav-title sb-page-widget-title"
+          role="button"
+          tabIndex={0}
+          onClick={onToggleCollapsed}
+          onKeyDown={(ev) => activateOnKey(ev, onToggleCollapsed)}
+        >
+          {label}
+          {error && <span className="sb-page-widget-error"> ⚠</span>}
+        </span>
+      </span>
+      <span className="sb-page-widget-tools">
+        {loading && <LoadingIndicator />}
+        {meta.definition && (
+          <button
+            type="button"
+            className="sb-nav-definition"
+            title="Go to definition"
+            aria-label="Go to definition"
+            onClick={() => void client.navigate(meta.definition!)}
+          >
+            <DefinitionIcon />
+          </button>
+        )}
+        {tools}
+        <DockMenu
+          name={name}
+          current={slot}
+          supported={meta.supportedDocks ?? [slot]}
+        />
+        <button
+          type="button"
+          className="sb-nav-close"
+          title={t("閉じる", "Close")}
+          aria-label={t("閉じる", "Close")}
+          onClick={() => void closeView(name, slot)}
+        >
+          <CloseIcon />
+        </button>
+      </span>
+    </div>
+  );
+}
+
+function HoverBar({
+  client,
+  name,
+  meta,
+  slot,
+  loading,
+  tools,
+}: {
+  client: Pick<Client, "navigate">;
+  name: string;
+  meta: ViewMeta;
+  slot: string;
+  loading?: boolean;
+  tools?: ComponentChildren;
+}) {
+  const supported = meta.supportedDocks ?? [slot];
+  return (
+    <span className="sb-page-widget-hoverbar">
+      {loading && <LoadingIndicator />}
+      {meta.definition && (
+        <button
+          type="button"
+          className="sb-nav-definition"
+          title="Go to definition"
+          aria-label="Go to definition"
+          onClick={() => void client.navigate(meta.definition!)}
+        >
+          <DefinitionIcon />
+        </button>
+      )}
+      {tools}
+      {supported.length > 1 && (
+        <DockMenu name={name} current={slot} supported={supported} />
+      )}
+    </span>
+  );
+}
+
+/**
+ * The collapse state a page widget runs on: seeded from what `pageSlotViews`
+ * already read (never fetched after mount, which would paint expanded and then
+ * roll up), flipped and persisted together, and reported to the slot so its
+ * height cache re-measures rather than keeping the body's height.
+ */
+export function useCollapsed(
+  name: string,
+  initial: boolean,
+  onSettled: (name: string) => void,
+): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(initial);
+  const first = useRef(true);
+
+  // Not on mount: the widget's own load path reports that settle, and
+  // reporting here as well would measure before there is a body to measure.
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    onSettled(name);
+  }, [collapsed]);
+
+  return [
+    collapsed,
+    () => {
+      const { next, persist } = toggleCollapsed(collapsed);
+      // Persist before collapsing: navigation can tear down a background write.
+      void setViewCollapsed(name, persist)
+        .then(() => setCollapsed(next))
+        // Allow toggling when persistence fails, but report that it will not survive
+        // a reload.
+        .catch((e) => {
+          console.error("navigator: could not persist collapse state", e);
+          setCollapsed(next);
+        });
+    },
+  ];
+}
+
+/**
+ * What a page-docked view looks like from the outside, whichever kind it is:
+ * the wrapper, the bar, and the body when there is one to draw. The two widget
+ * kinds differ only in what they load and what they put in the body -- keeping
+ * the frame here is what stops a content view and a row view from drifting
+ * apart in their chrome.
+ *
+ * `hasBody` rather than a pre-gated `children`, so the collapse rule lives in
+ * exactly one place: collapsed *removes* the body rather than hiding it, which
+ * is what lets the slot re-measure to the bar's own height.
+ */
+export function PageWidgetFrame({
+  client,
+  name,
+  meta,
+  slot,
+  modifier,
+  pending,
+  error,
+  loading,
+  tools,
+  collapsed,
+  onToggleCollapsed,
+  hasBody,
+  children,
+}: {
+  client: Pick<Client, "navigate">;
+  name: string;
+  meta: ViewMeta;
+  slot: string;
+  /** An extra class beside `sb-page-widget`, e.g. `sb-page-widget-tree`. */
+  modifier?: string;
+  pending?: boolean;
+  error?: string;
+  loading?: boolean;
+  tools?: ComponentChildren;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  hasBody: boolean;
+  children?: ComponentChildren;
+}) {
+  if (meta.frame === "minimal") {
+    return (
+      <div
+        className={["sb-page-widget", "sb-page-widget-minimal", modifier]
+          .filter(Boolean)
+          .join(" ")}
+        data-view={name}
+        aria-busy={pending}
+        tabIndex={-1}
+      >
+        <HoverBar
+          client={client}
+          name={name}
+          meta={meta}
+          slot={slot}
+          loading={loading}
+          tools={tools}
+        />
+        {error && <div className="sb-page-widget-error">⚠ {error}</div>}
+        {hasBody && <div className="sb-page-widget-body">{children}</div>}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={[
+        "sb-page-widget",
+        modifier,
+        collapsed && "sb-page-widget-collapsed",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-view={name}
+      aria-busy={pending}
+      // Focusable programmatically (never by Tab): `open()` focuses the widget
+      // when it has no row to hand the keyboard to.
+      tabIndex={-1}
+    >
+      <WidgetBar
+        client={client}
+        name={name}
+        meta={meta}
+        slot={slot}
+        error={error}
+        loading={loading}
+        tools={tools}
+        collapsed={collapsed}
+        onToggleCollapsed={onToggleCollapsed}
+      />
+      {showsBody(collapsed, hasBody) && (
+        <div className="sb-page-widget-body">{children}</div>
+      )}
+    </div>
+  );
+}

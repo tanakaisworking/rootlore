@@ -1,0 +1,328 @@
+#meta
+
+Implements some useful general purpose widgets. Specifically:
+
+## Buttons
+Types of button widgets:
+
+* `widgets.button(text, callback)` renders a simple button running the callback when clicked
+* `widgets.commandButton(commandName)` renders a button for a particular command (where the button text is the command name itself)
+* `widgets.commandButton(text, commandName)` renders a button for a particular command with a custom button text
+* `widgets.commandButton(text, commandName, args)` renders a button for a particular command and arguments (specified as a table list) with a custom button text
+
+Examples:
+
+${widgets.button("Hello", function()
+  editor.flashNotification "Hi there!"
+end)}
+
+${widgets.commandButton("System: Reload")}
+
+## Docked widgets
+* **Table of Contents** (`std.toc`, command `Navigate: Table of Contents`): the current page's headers as a tree, live as you type. Opens in the right sidebar. A page with fewer than `minHeaders` headers has no outline worth showing, and the view renders nothing at all in a page dock there.
+* **Linked Mentions** (`std.linkedMentions`, command `Navigate: Linked Mentions`): every other page linking to this one, with a snippet of context. Docks at the bottom of the page, open until you close it.
+* **Linked Tasks** (`std.linkedTasks`, command `Navigate: Linked Tasks`): incomplete tasks on other pages that link to this one. Docks at the top of the page, open until you close it.
+
+None of the three has an `enabled` config key any more. Each remembers its own dock and open/closed state: close it with its ×, bring it back with its command, move it with its dock menu, and that choice is what applies from then on. The one knob left is how short an outline is too short to be worth showing:
+
+```lua
+-- Only show a table of contents on pages with >= 5 headers
+config.set("std.widgets.toc.minHeaders", 5)
+```
+
+To set where a view docks space-wide — and whether it starts open, folded, or what size it uses — use `view.defaults` (`view.docks` and `navigator.docks` still work as dock-only fallbacks).
+
+# Implementation
+
+## Buttons
+```space-lua
+-- priority: 10
+function widgets.button(text, callback, attrs)
+  -- Labels are plain text: as markdown, ">" or "# 1" would render as blocks
+  local buttonEl = {
+    onclick = callback,
+    __rawText = text
+  }
+
+  -- attrs can be used for additional customization
+  if attrs then
+    for k, v in pairs(attrs) do
+      buttonEl[k] = v
+    end
+  end
+
+  return widget.html(dom.button(buttonEl))
+end
+
+function widgets.commandButton(text, commandName, args)
+  if not commandName then
+    -- When only passed one argument, then let's assume it's a command name
+    commandName = text
+  end
+  return widget.html(dom.button {
+    onclick = function()
+      editor.invokeCommand(commandName, args)
+    end,
+    __rawText = text
+  })
+end
+
+function widgets.subPages(pageName)
+  pageName = pageName or editor.getCurrentPage()
+  return widget.markdown(table.concat(query[[
+    from p = index.subPages(pageName)
+    select templates.pageItem(p)
+  ]]))
+end
+```
+
+## Table of contents
+```space-lua
+-- priority: 10
+widgets = widgets or {}
+
+config.defineCategory {
+  name = "Widgets",
+  description = "Enable and configure built-in widgets (table of contents, linked mentions, etc.)",
+  priority = 45,
+}
+
+-- The Table of Contents view has no `enabled` key -- it remembers its own dock
+-- and open state -- but it does have a floor: a page with fewer headers than
+-- this has no outline worth showing, so the view renders nothing at all there.
+config.define("std.widgets.toc", {
+  type = "object",
+  properties = {
+    minHeaders = {
+      type = "number",
+      default = 3,
+      description = "Minimum number of headers required before rendering a table of contents at all.",
+      ui = { category = "Widgets", label = "Minimum headers for TOC", priority = 3 },
+    },
+  }
+})
+
+-- Returns ATX headings as {name, pos, level}; defaults to the current page.
+function widgets.tocHeaders(text)
+  local parsedMarkdown = markdown.parseMarkdown(text or editor.getText())
+  local headers = {}
+  for topLevelChild in parsedMarkdown.children do
+    if topLevelChild.type then
+      local headerLevel = string.match(topLevelChild.type, "^ATXHeading(%d+)")
+      if headerLevel then
+        local label = ""
+        table.remove(topLevelChild.children, 1)
+        for child in topLevelChild.children do
+          label = label .. string.trim(markdown.renderParseTree(child))
+        end
+        -- Strip link syntax to avoid nested brackets in TOC
+        label = string.gsub(label, "%[%[(.-)%]%]", "%1")
+
+        if label != "" then
+          table.insert(headers, {
+            name = label,
+            pos = topLevelChild.from,
+            level = tonumber(headerLevel)
+          })
+        end
+      end
+    end
+  end
+  return headers
+end
+
+```
+
+### Table of Contents
+```space-lua
+-- priority: -1
+-- vault-web: 目次は出さない。ノートを押したら開くだけにする。以前に開いた状態がブラウザに
+-- 残っていると、ノートを開くたびに出てしまうため、ビューとして登録しない（定義は残す。
+-- 戻すときは下の行を `view.define {` に戻す）
+local vaultWebHiddenToc = {
+  name = "std.toc",
+  -- vault-web: 画面の言語にする（client/vault_web_i18n.ts が js.window.vaultWebLanguage に置く）
+  title = js.window.vaultWebLanguage == "en" and "Table of Contents" or "目次",
+  placeholder = js.window.vaultWebLanguage == "en" and "Header" or "見出し",
+  command = "Navigate: Table of Contents",
+  menu = { location = "view", group = "1_views", order = 1, label = "Table of Contents" },
+  dock = "rhs",
+  supportedDocks = { "page-top", "page-bottom", "lhs", "rhs", "bhs", "modal" },
+  defaultOpen = false,
+  refreshOn = { "navigate", "edit" },
+  refreshOnOpen = true,
+  source = function(ctx)
+    -- A document (not a page) has no markdown text for `tocHeaders` to read,
+    -- and `editor.getText()` would answer with whatever page was open before.
+    local path = editor.getCurrentPath()
+    if not string.match(path, "%.md$") then
+      return {}
+    end
+    local headers = widgets.tocHeaders()
+    if ctx.dock == "page-top" or ctx.dock == "page-bottom" then
+      local minHeaders = config.get("std.widgets.toc", {}).minHeaders or 3
+      if #headers < minHeaders then
+        return {}
+      end
+    end
+    -- Nest by ancestor chain: nearest shallower header is the parent.
+    local rows = {}
+    local stack = {}
+    local taken = {}
+    for _, header in ipairs(headers) do
+      while #stack > 0 and stack[#stack].level >= header.level do
+        table.remove(stack)
+      end
+      -- "/" is the tree's path separator; look-alike keeps it literal.
+      local nodePath = string.gsub(header.name, "/", "∕")
+      if #stack > 0 then
+        nodePath = stack[#stack].path .. "/" .. nodePath
+      end
+      while taken[nodePath] do
+        nodePath = nodePath .. " @" .. header.pos
+      end
+      taken[nodePath] = true
+      table.insert(stack, { level = header.level, path = nodePath })
+      table.insert(rows, {
+        name = nodePath,
+        header = header.name,
+        pos = header.pos,
+      })
+    end
+    return rows
+  end,
+  presentation = {
+    mode = "tree",
+    expandAll = true,
+    expansionScope = "page",
+    foldersFirst = false,
+    row = {
+      primary = "header",
+      label = "header",
+      cssClass = function() return "sb-nav-noband" end,
+    },
+  },
+  keymap = {
+    [" "] = function(obj)
+      editor.navigate { page = editor.getCurrentPage(), pos = obj.pos }
+    end,
+  },
+  onSelect = function(obj)
+    editor.navigate { page = editor.getCurrentPage(), pos = obj.pos }
+  end,
+}
+
+```
+
+## Linked mentions
+```space-lua
+-- priority: 10
+widgets = widgets or {}
+
+local mentionTemplate = template.new [==[
+**[[${_.page}@${_.start}|${_.name}]]**:
+${_.snippet}
+
+]==]
+
+function widgets.linkedMentionsMarkdown(pageName)
+  pageName = pageName or editor.getCurrentPage()
+  local linkedMentions = query[[
+    from r = index.relations()
+    where r.page != pageName
+      and r.to == pageName
+      and r.kind != "co-mention"
+    order by r.pageLastModified desc, r.range[1]
+    select mentionTemplate({
+      page = r.page,
+      -- vault-web: 見出しはノートの名前（場所の最後の部分）だけにする。位置の番号（@161 など）も出さない
+      name = string.match(r.page, "[^/]+$") or r.page,
+      snippet = r.snippet,
+      start = r.range[1],
+    })
+  ]]
+  if #linkedMentions == 0 then
+    return ""
+  end
+  return table.concat(linkedMentions)
+end
+
+function widgets.linkedMentions(pageName)
+  local md = widgets.linkedMentionsMarkdown(pageName)
+  if md != "" then
+    return widget.new {
+      markdown = "# Linked Mentions\n" .. md
+    }
+  end
+end
+
+view.define {
+  name = "std.linkedMentions",
+  -- vault-web: 画面の言語にする
+  title = js.window.vaultWebLanguage == "en" and "Linked Mentions" or "このノートへのリンク",
+  command = "Navigate: Linked Mentions",
+  menu = { location = "view", group = "1_views", order = 2, label = "Linked Mentions" },
+  dock = "page-bottom",
+  supportedDocks = { "page-top", "page-bottom", "lhs", "rhs", "bhs", "modal" },
+  defaultOpen = true,
+  refreshOn = { "navigate", "index" },
+  refreshOnOpen = true,
+  content = function()
+    return widgets.linkedMentionsMarkdown()
+  end,
+}
+```
+
+## Linked tasks
+```space-lua
+-- priority: 10
+
+-- Linked tasks as Markdown without a heading, or "" when empty.
+-- taskItem includes page@pos refs so checkboxes write back to their source.
+function widgets.linkedTasksMarkdown(pageName)
+  pageName = pageName or editor.getCurrentPage()
+  local tasks = query[[
+    from t = index.tasks()
+    where not t.done and table.includes(t.ilinks, pageName)
+    order by t.page
+    select templates.taskItem(t)
+  ]]
+  if #tasks == 0 then
+    return ""
+  end
+  return table.concat(tasks)
+end
+
+function widgets.linkedTasks(pageName)
+  local md = widgets.linkedTasksMarkdown(pageName)
+  if md != "" then
+    md = "# Linked Tasks\n" .. md
+  end
+  return widget.new {
+    markdown = md
+  }
+end
+```
+
+### Top widget
+```space-lua
+-- priority: -1
+-- A *content* view, like linked mentions: the tasks render as real markdown
+-- tasks, so their checkboxes tick and write straight back to the page each
+-- task lives on -- no need to navigate there first.
+view.define {
+  name = "std.linkedTasks",
+  -- vault-web: 画面の言語にする
+  title = js.window.vaultWebLanguage == "en" and "Linked Tasks" or "関連するタスク",
+  command = "Navigate: Linked Tasks",
+  menu = { location = "view", group = "1_views", order = 3, label = "Linked Tasks" },
+  dock = "page-top",
+  supportedDocks = { "page-top", "page-bottom", "lhs", "rhs", "bhs", "modal" },
+  defaultOpen = true,
+  refreshOn = { "navigate", "index" },
+  refreshOnOpen = true,
+  content = function()
+    return widgets.linkedTasksMarkdown()
+  end,
+}
+```

@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><defs><linearGradient id="page" gradientUnits="userSpaceOnUse" x1="866" y1="356" x2="640" y2="716">
+<stop offset="0" stop-color="#c3c6cf"/><stop offset="1" stop-color="#6b6e78"/></linearGradient></defs><rect x="0.0" y="0.0" width="256.0" height="256.0" rx="56.32" fill="#f6f6f7"/><g transform="translate(128.0 128.0) scale(0.3748953974895397) translate(-627 -537)"><path d="M 388 384 Q 388 356 416 358 C 520 370 600 398 614 462 L 614 716 C 584 676 520 650 418 641 Q 388 638 388 610 Z" fill="#18181b"/>
+<path d="M 388 384 Q 388 356 416 358 C 520 370 600 398 614 462 L 614 716 C 584 676 520 650 418 641 Q 388 638 388 610 Z" transform="translate(1254 0) scale(-1 1)" fill="url(#page)"/></g></svg>

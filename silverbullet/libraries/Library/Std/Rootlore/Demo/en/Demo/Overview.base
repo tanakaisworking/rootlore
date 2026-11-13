@@ -1,0 +1,28 @@
+filters:
+  and:
+    - file.inFolder("Demo")
+    - file.hasTag("demo")
+properties:
+  file.name:
+    displayName: Note
+  tags:
+    displayName: Tags
+  date:
+    displayName: Date
+  file.mtime:
+    displayName: Updated
+views:
+  - type: table
+    name: All notes
+    order:
+      - file.name
+      - tags
+      - file.mtime
+  - type: table
+    name: Meetings
+    filters:
+      and:
+        - file.hasTag("meeting")
+    order:
+      - file.name
+      - date

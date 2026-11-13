@@ -1,0 +1,23 @@
+{
+  "name": "rootlore",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:sb": "GITHUB_SHA=$(git rev-parse --short HEAD) npm --prefix silverbullet run build",
+    "build": "npm run build:sb && node scripts/build.mjs",
+    "dev": "npm run build && wrangler dev --ip 127.0.0.1 --port 8790 --var DEV_GITHUB_TOKEN:$(gh auth token) --var DEV_GITHUB_REPO:${DEV_GITHUB_REPO:?set DEV_GITHUB_REPO=owner/repo}",
+    "typecheck": "tsc",
+    "deploy": "npm run build && wrangler deploy",
+    "test": "vitest run --dir worker",
+    "build:desktop": "npm run build && rsync -a --delete dist/ desktop/frontend/"
+  },
+  "dependencies": {
+    "hono": "^4.13.16"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261102.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.1"
+  }
+}

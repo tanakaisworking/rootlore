@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>ログイン · Rootlore</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f6f3;
+        --card: #fff;
+        --text: #1f1e1b;
+        --muted: #6b675f;
+        --line: #e4e1da;
+        --accent: #2f5d50;
+        --accent-text: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #191917;
+          --card: #22221f;
+          --text: #ecebe6;
+          --muted: #a19d93;
+          --line: #34332e;
+          --accent: #7fb3a2;
+          --accent-text: #13201c;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.8 "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 440px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 32px 28px;
+      }
+      .brand { font-size: 13px; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 20px; }
+      h1 { font-size: 22px; line-height: 1.5; margin: 0 0 12px; }
+      h2 { font-size: 16px; margin: 0 0 6px; }
+      p { margin: 0 0 12px; color: var(--muted); }
+      code {
+        font-size: 0.92em;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        color: var(--text);
+      }
+      .button {
+        display: block;
+        width: 100%;
+        margin-top: 20px;
+        padding: 13px 16px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--accent);
+        color: var(--accent-text);
+        font: inherit;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .button:focus-visible { outline: 3px solid var(--line); outline-offset: 2px; }
+      .button[disabled] { opacity: 0.55; cursor: default; }
+      .note { font-size: 13px; margin-top: 16px; }
+
+      .token { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+      label { display: block; margin: 14px 0 4px; font-size: 13px; font-weight: 600; color: var(--text); }
+      input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--bg);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+      }
+      input:focus-visible { outline: 3px solid var(--line); outline-offset: 1px; }
+      .error {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #fdecec;
+        color: #a11212;
+        font-size: 13px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .error { background: #3a1d1d; color: #ffb4b4; }
+      }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="brand">Rootlore</p>
+      <h1 id="title">ログイン</h1>
+      <p id="intro">
+        GitHubアカウントで本人確認を行います。リポジトリへのアクセスは、次の画面で個別に許可します。
+      </p>
+      <a class="button" id="github" href="/.auth/login">GitHubでログイン</a>
+
+      <section class="token" id="token-section" hidden>
+        <h2 id="token-title">トークンを使う</h2>
+        <p id="token-intro">
+          GitHubで作ったトークンで、このアプリから直接つなぎます。Rootloreのサーバーを通しません。
+        </p>
+        <p class="note" id="token-note">
+          必要な権限は <code>Contents: Read and write</code> だけです。
+        </p>
+        <label for="token" id="label-token">トークン</label>
+        <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" />
+        <label for="repo" id="label-repo">リポジトリ（owner/repo）</label>
+        <input id="repo" type="text" autocomplete="off" spellcheck="false" placeholder="your-name/notes" />
+        <label for="branch" id="label-branch">ブランチ</label>
+        <input id="branch" type="text" value="main" autocomplete="off" spellcheck="false" />
+        <button class="button" id="save" type="button">このトークンで接続</button>
+        <div id="error" class="error" hidden></div>
+      </section>
+    </main>
+    <script>
+      // 画面の言語（アプリの設定と同じ決め方: 日本語なら日本語、ほかは英語）
+      const ja = (navigator.language || "").toLowerCase().startsWith("ja");
+      const texts = ja
+        ? {
+            title: "ログイン",
+            intro: "GitHubアカウントで本人確認を行います。リポジトリへのアクセスは、次の画面で個別に許可します。",
+            github: "GitHubでログイン",
+            tokenTitle: "トークンを使う",
+            tokenIntro: "GitHubで作ったトークンで、このアプリから直接つなぎます。Rootloreのサーバーを通しません。",
+            tokenNote: "必要な権限は Contents: Read and write だけです。",
+            labelToken: "トークン",
+            labelRepo: "リポジトリ（owner/repo）",
+            labelBranch: "ブランチ",
+            save: "このトークンで接続",
+            noToken: "トークンを入れてください。",
+            badRepo: "リポジトリは owner/repo の形で入れてください。",
+            failed: "接続できませんでした。",
+          }
+        : {
+            title: "Sign in",
+            intro: "Sign in with your GitHub account. You'll grant access to the repository separately on the next screen.",
+            github: "Sign in with GitHub",
+            tokenTitle: "Use a token",
+            tokenIntro: "Connect straight from this app with a token you create on GitHub. Rootlore's server is not involved.",
+            tokenNote: "The only permission needed is Contents: Read and write.",
+            labelToken: "Token",
+            labelRepo: "Repository (owner/repo)",
+            labelBranch: "Branch",
+            save: "Connect with this token",
+            noToken: "Enter your token.",
+            badRepo: "Enter the repository as owner/repo.",
+            failed: "Couldn't connect.",
+          };
+      document.documentElement.lang = ja ? "ja" : "en";
+      document.title = texts.title + " · Rootlore";
+      for (const [id, key] of [
+        ["title", "title"],
+        ["intro", "intro"],
+        ["github", "github"],
+        ["token-title", "tokenTitle"],
+        ["token-intro", "tokenIntro"],
+        ["token-note", "tokenNote"],
+        ["label-token", "labelToken"],
+        ["label-repo", "labelRepo"],
+        ["label-branch", "labelBranch"],
+        ["save", "save"],
+      ]) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = texts[key];
+      }
+
+      const el = (id) => document.getElementById(id);
+      const show = (message) => {
+        const box = el("error");
+        box.textContent = message;
+        box.hidden = false;
+      };
+
+      // トークンを貼る道は、手元で動いているアプリだけが受け付けられる。
+      // 受け付けられるかは、その口があるかで決まる（Web版には無い）
+      fetch("/connect/available", { cache: "no-store" })
+        .then((res) => {
+          if (res.ok) el("token-section").hidden = false;
+        })
+        .catch(() => {});
+
+      el("save").addEventListener("click", async () => {
+        const token = el("token").value.trim();
+        const repo = el("repo").value.trim();
+        const branch = el("branch").value.trim() || "main";
+        if (!token) return show(texts.noToken);
+        if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) return show(texts.badRepo);
+        el("save").disabled = true;
+        try {
+          const res = await fetch("/connect/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, repo, branch }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.message || texts.failed);
+          }
+          location.replace("/v/");
+        } catch (e) {
+          show(e.message);
+          el("save").disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

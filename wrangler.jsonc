@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rootlore",
+  "account_id": "2411aff86697455e163f1737e02bbd85",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/v",
+      "/v/*",
+      "/api/*",
+      "/.auth",
+      "/.auth/*",
+      "/.config",
+      "/.fs",
+      "/.fs/*",
+      "/.ping",
+      "/.events",
+      "/.logs",
+      "/.logout"
+    ]
+  },
+  // ログインの途中の状態などを置く KV
+  "kv_namespaces": [{ "binding": "APP_KV", "id": "0d6d106b51914a769167990c7d161c08" }],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  // エラーの報告（/api/errors、worker/errors.ts）の回数の上限。接続元の IP ごとに1分30件。
+  // namespace_id はアカウントの中で他の Worker と重ならない数にする
+  "ratelimits": [{ "name": "ERRORS_LIMIT", "namespace_id": "40420", "simple": { "limit": 30, "period": 60 } }],
+  // 2026-11-12: 誰でもログインでき、開くリポジトリは各自が選ぶ（worker/repos.ts）。
+  // 自分だけに絞るときは "ALLOWED_LOGINS": "your-login" を足す
+  "vars": {
+    // 管理画面（/v/admin）を見てよいアカウント
+    "ADMIN_LOGINS": "tanakaisworking"
+  }
+}

@@ -1,0 +1,28 @@
+filters:
+  and:
+    - file.inFolder("デモ")
+    - file.hasTag("デモ")
+properties:
+  file.name:
+    displayName: ノート
+  tags:
+    displayName: タグ
+  date:
+    displayName: 日付
+  file.mtime:
+    displayName: 更新日時
+views:
+  - type: table
+    name: すべてのノート
+    order:
+      - file.name
+      - tags
+      - file.mtime
+  - type: table
+    name: 議事録
+    filters:
+      and:
+        - file.hasTag("議事録")
+    order:
+      - file.name
+      - date
