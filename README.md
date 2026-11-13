@@ -1,26 +1,41 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/brand/rootlore-logo-horizontal-dark.png">
-    <img src="docs/brand/rootlore-logo-horizontal.png" alt="Rootlore" width="420">
+    <img src="docs/brand/rootlore-logo-horizontal.png" alt="Rootlore" width="360">
   </picture>
 </p>
 
-<p align="center"><strong>Your knowledge. Rooted in Git.</strong><br>A GitHub-native knowledge workspace.</p>
+<p align="center"><strong>Your knowledge. Rooted in Git.</strong><br>Read, search, and edit the Markdown notes in your GitHub repository.</p>
 
 <p align="center">
-  <a href="https://rootlore.app/v/">Open Rootlore</a> ·
+  <a href="https://rootlore.app/v/"><strong>Open the web app</strong></a> ·
+  <a href="https://github.com/tanakaisworking/rootlore-releases/releases/latest">Download for macOS</a> ·
   <a href="https://github.com/tanakaisworking/rootlore/issues/new">Send feedback</a>
 </p>
 
-Rootlore is a knowledge workspace for Markdown notes kept in GitHub. Read and edit them in the browser. Your repository remains the source of truth—no sync app, no always-on server, no lock-in.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.webp">
+  <img src="docs/readme/hero-light.webp" alt="Rootlore showing a project note with frontmatter, a callout, and task lists, next to a knowledge map of linked notes.">
+</picture>
 
-Rootlore is in open beta. Anyone with a GitHub account can try it.
+Rootlore turns a GitHub repository of Markdown notes into a workspace you can open anywhere. Your repository stays the source of truth: no sync app, no always-on server, no export step. Rootlore is in open beta, and anyone with a GitHub account can try it.
 
-## Your notes stay yours
+## Why Rootlore
 
-Switching note apps usually means moving your data. Rootlore keeps it in GitHub. Your Markdown and revision history stay in your repository, readable in Obsidian, on GitHub, or in any editor. If you stop using Rootlore, nothing is left behind.
+**Your notes stay yours.** Switching note apps usually means moving your data. With Rootlore, your Markdown and its full history stay in your own repository, readable in Obsidian, on GitHub, or in any editor. If you stop using Rootlore, nothing is left behind.
 
-When AI writes your notes, you need to see what changed. Rootlore is built for supervising knowledge managed by AI. It starts with how your knowledge changed, not with a blank page.
+**Nothing to sync.** Every device opens the same repository. There is no sync service to pay for, no conflicted copies, and no vault to keep in step across machines.
+
+**Built for notes that AI writes.** When agents and scripts write into your notes, you need to see what changed. Every save is a Git commit, and the home screen starts with how your knowledge changed, not with a blank page.
+
+## See your knowledge grow
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/home-dark.webp">
+  <img src="docs/readme/home-light.webp" alt="The Rootlore home screen with a year of contributions, note growth by folder, and a knowledge map.">
+</picture>
+
+The home screen reads your Git history: a year of contributions, how each folder grew, and the latest changes. The knowledge map draws every `[[link]]` between your notes, so the hubs of your thinking stand out.
 
 ## What you can do
 
