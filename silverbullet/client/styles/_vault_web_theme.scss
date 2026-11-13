@@ -1034,6 +1034,29 @@ html[data-vw-font-size="large"] #sb-main .cm-editor {
     opacity: 0.6;
   }
 
+  // カーソルが外にあるときは、上下の `---` の行を出さない（行の高さも詰める）。
+  // 中をクリックすると上流どおり `---` が出て、そのまま編集できる。
+  // 「▾ frontmatter」（折りたたみのボタン）は最初の行に浮いているので、大きさを指定し直して残す
+  .cm-line.sb-frontmatter.sb-line-frontmatter-outside {
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
+    padding-top: 6px;
+    padding-bottom: 0;
+
+    .sb-frontmatter-marker {
+      font-size: 0.75rem;
+      line-height: 1.6;
+    }
+  }
+
+  // 閉じの `---` の行（フロントマターの行のすぐ後ろ）は、囲みの下の余白になる
+  .cm-line.sb-frontmatter + .cm-line.sb-frontmatter.sb-line-frontmatter-outside {
+    padding-top: 0;
+    padding-bottom: 6px;
+    border-radius: 0 0 8px 8px;
+  }
+
   // 折りたたんだフロントマターの中のタグは、コールアウトの中に小さく並べる
   .cm-frontmatterFoldPlaceholder .sb-hashtag {
     padding: 0 0.45em;
