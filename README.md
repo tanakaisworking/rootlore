@@ -8,8 +8,8 @@
 <p align="center"><strong>Your knowledge. Rooted in Git.</strong><br>Read, search, and edit the Markdown notes in your GitHub repository.</p>
 
 <p align="center">
-  <a href="https://rootlore.app/v/"><strong>Open the web app</strong></a> ·
-  <a href="https://github.com/tanakaisworking/rootlore-releases/releases/latest">Download for macOS</a> ·
+  <a href="https://github.com/tanakaisworking/rootlore-releases/releases/latest"><strong>Download for macOS</strong></a> ·
+  <a href="https://rootlore.app/v/">Open the web app (beta)</a> ·
   <a href="https://github.com/tanakaisworking/rootlore/issues/new">Send feedback</a>
 </p>
 
@@ -18,7 +18,7 @@
   <img src="docs/readme/hero-light.webp" alt="Rootlore showing a project note with frontmatter, a callout, and task lists, next to a knowledge map of linked notes.">
 </picture>
 
-Rootlore turns a GitHub repository of Markdown notes into a workspace you can open anywhere. Your repository stays the source of truth: no sync app, no always-on server, no export step. Rootlore is in open beta, and anyone with a GitHub account can try it.
+Rootlore is an open-source Mac app that turns a GitHub repository of Markdown notes into a workspace. Your repository stays the source of truth: no sync app, no export step. Connect it with your own GitHub token, and the app talks to GitHub directly. A web version is in open beta, and anyone with a GitHub account can try it.
 
 ## Why Rootlore
 
@@ -47,9 +47,20 @@ The home screen reads your Git history: a year of contributions, how each folder
 - Keep an in-browser draft while editing. Close the tab or navigate away without losing your work.
 - Drag files between folders. If a move would conflict, Rootlore returns the file and tells you.
 - Use familiar shortcuts: `⌘Z` to undo a move, `⌘,` for settings, and more.
-- Work from the CLI or the macOS desktop app when you want to automate or stay out of the browser.
+- Let AI tools search and read your notes through the Mac app's built-in MCP server.
+- Work from the CLI when you want to automate.
 
 ## Getting started
+
+### On your Mac (recommended)
+
+1. Download Rootlore from the [latest release](https://github.com/tanakaisworking/rootlore-releases/releases/latest) and move it to Applications.
+2. On GitHub, create a fine-grained token: Settings → Developer settings → Personal access tokens → Fine-grained tokens. Under Repository access, choose "Only select repositories" and pick your notes repository. Under Repository permissions, set Contents to "Read and write".
+3. Open Rootlore, paste the token under "Use a token", and enter the repository as `owner/repo`.
+
+The token is stored in the macOS Keychain, and the app sends your notes only to and from GitHub. You can revoke the token on GitHub at any time.
+
+### In the browser (beta)
 
 1. Open [Rootlore](https://rootlore.app/v/) and sign in with GitHub.
 2. Choose the repository that holds your notes. If your Obsidian vault is already on GitHub, pick that repository.
@@ -61,7 +72,7 @@ The App requests read and write access to Contents for the repositories you inst
 
 - Rootlore does not store note bodies on its servers. Notes travel only between GitHub and your browser.
 - Rootlore keeps only what it needs for sign-in, and the name of the repository you chose, inside your encrypted session cookie. There is no note database.
-- On the hosted version, the operator can technically access the repository you connect. We minimize permissions, avoid storing notes server-side, and keep a self-hosting path available.
+- On the web version, the operator can technically access the repository you connect. We minimize permissions and do not store notes server-side. If you prefer that no server is involved, use the Mac app with your own token.
 - You can revoke access from GitHub at any time.
 - The app sends error reports (the error type, the stack trace, and browser error messages) to help fix problems. Note contents, file names, and page locations are removed before they leave Rootlore's server. Turn it off in Settings → Error reports. Self-hosted instances send nothing unless they set their own Sentry DSN.
 
@@ -80,7 +91,6 @@ See [docs/architecture.md](docs/architecture.md) for the design.
 - Grouped change events that explain what changed and why.
 - Image and attachment uploads.
 - Better mobile reading and a faster knowledge map.
-- Self-hosting documentation.
 
 ## Development
 
@@ -94,7 +104,7 @@ npm ci --prefix silverbullet
 npm run dev
 ```
 
-The app runs at http://127.0.0.1:8790. `npm run dev` uses `gh auth token`, so run `gh auth login` first, and set `DEV_GITHUB_REPO=owner/repo` to the repository to open. Worker tests: `npm test`. SilverBullet tests: `npm --prefix silverbullet test`. Contribution rules are in [AGENTS.md](AGENTS.md).
+The app runs at http://127.0.0.1:8790. `npm run dev` uses `gh auth token`, so run `gh auth login` first, and set `DEV_GITHUB_REPO=owner/repo` to the repository to open. Worker tests: `npm test`. SilverBullet tests: `npm --prefix silverbullet test`. See [CONTRIBUTING.md](CONTRIBUTING.md) before you send a change.
 
 ## Feedback
 
