@@ -1,11 +1,21 @@
 // アプリの更新: 公開している latest.json を見て、新しい版があれば入れて開き直す。
 // 置き場所は `tauri.conf.json` の `plugins.updater`（配布用のリポジトリの latest.json）。
 // 中身が本物かは、ビルドに埋めた公開鍵で確かめる（合わないものは入れない）。
+// 自動の確認（起動の少しあとと、その後2時間おき）は尋ねずに裏で受け取り、アプリを終了するときに入れ替える。
+// 開いている間に入れ替えると、動いている版と同梱の画面がずれるので、入れ替えは終了時にする。
+// メニューの「アップデートを確認…」だけは、尋ねてから入れ替えて開き直す。
+use std::sync::Mutex;
 use std::time::Duration;
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
-use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_updater::{Update, UpdaterExt};
+
+const INTERVAL: Duration = Duration::from_secs(2 * 60 * 60);
+
+/// 裏で受け取った新しい版。アプリを終了するときに入れ替える
+#[derive(Default)]
+pub struct Pending(Mutex<Option<(Update, Vec<u8>)>>);
 
 fn text<'a>(language: &str, ja: &'a str, en: &'a str) -> &'a str {
     if language == "ja" { ja } else { en }
@@ -21,12 +31,54 @@ fn log(stage: &str, extra: serde_json::Value) {
     crate::log(&body.to_string());
 }
 
-/// 起動の少しあとで静かに確かめる（画面の読み込みを邪魔しない）
+/// 起動の少しあと（画面の読み込みを邪魔しない）と、その後2時間おきに静かに確かめる
 pub fn check_after_start(app: AppHandle) {
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(8));
-        tauri::async_runtime::spawn(async move { check(app, true).await });
+        loop {
+            tauri::async_runtime::block_on(fetch_in_background(app.clone()));
+            std::thread::sleep(INTERVAL);
+        }
     });
+}
+
+/// 新しい版があれば、尋ねずに受け取っておく（入れ替えは install_pending）
+async fn fetch_in_background(app: AppHandle) {
+    log("update-check", serde_json::json!({ "silent": true }));
+    let update = match app.updater() {
+        Ok(updater) => updater.check().await,
+        Err(error) => Err(error),
+    };
+    let update = match update {
+        Ok(Some(update)) => update,
+        Ok(None) => return log("update-none", serde_json::json!({})),
+        Err(error) => return log("update-error", serde_json::json!({ "error": error.to_string() })),
+    };
+    let state = app.state::<Pending>();
+    let already = state.0.lock().ok().is_some_and(|p| p.as_ref().is_some_and(|(u, _)| u.version == update.version));
+    if already {
+        return;
+    }
+    log("update-available", serde_json::json!({ "version": update.version }));
+    match update.download(|_, _| {}, || {}).await {
+        Ok(bytes) => {
+            log("update-downloaded", serde_json::json!({ "version": update.version }));
+            if let Ok(mut pending) = state.0.lock() {
+                *pending = Some((update, bytes));
+            }
+        }
+        Err(error) => log("update-error", serde_json::json!({ "error": error.to_string() })),
+    }
+}
+
+/// アプリを終了するときに、受け取っておいた新しい版に入れ替える（次に開くと新しい版になる）
+pub fn install_pending(app: &AppHandle) {
+    let Some(state) = app.try_state::<Pending>() else { return };
+    let Some((update, bytes)) = state.0.lock().ok().and_then(|mut p| p.take()) else { return };
+    match update.install(&bytes) {
+        Ok(()) => log("update-installed-on-exit", serde_json::json!({ "version": update.version })),
+        Err(error) => log("update-error", serde_json::json!({ "error": error.to_string() })),
+    }
 }
 
 /// メニューの「アップデートを確認…」から。結果は必ず知らせる
@@ -96,6 +148,12 @@ fn ask(app: &AppHandle, language: &str, update: tauri_plugin_updater::Update) {
             }
             let app = handle.clone();
             let language = language.clone();
+            // メニューから入れ替えるので、裏で受け取っておいた分は終了時に入れ直さない
+            if let Some(state) = app.try_state::<Pending>() {
+                if let Ok(mut pending) = state.0.lock() {
+                    pending.take();
+                }
+            }
             tauri::async_runtime::spawn(async move {
                 log("update-install", serde_json::json!({ "version": update.version }));
                 match update.download_and_install(|_, _| {}, || {}).await {

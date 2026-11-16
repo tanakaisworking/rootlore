@@ -61,10 +61,10 @@ test("コマンドからも開ける。ポップアップではなく、ペー�
   } as unknown as CommandHook;
   const navigate = vi.fn(async () => {});
   registerVaultWebDialogCommands({ navigate } as unknown as Client, hook);
-  expect(commands.map((c) => c.name)).toEqual(["Vault: Settings", "Vault: Account", "Vault: Share", "Vault: Skills", "Vault: Feedback"]);
+  expect(commands.map((c) => c.name)).toEqual(["Vault: Settings", "Vault: Account", "Vault: Share", "Vault: Skills", "Vault: Feedback", "Vault: Update History"]);
   for (const command of commands) await command.run!();
   const paths = navigate.mock.calls.map((call: any[]) => call[0].path);
-  expect(paths.map(vaultWebPageFor)).toEqual(["settings", "account", "share", "skills", "feedback"]);
+  expect(paths.map(vaultWebPageFor)).toEqual(["settings", "account", "share", "skills", "feedback", "updates"]);
 });
 
 test("設定とアカウントのページは同梱のページの下に置き、タイトル欄には名前だけが出る", () => {

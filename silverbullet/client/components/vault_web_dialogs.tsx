@@ -32,6 +32,7 @@ import { HomeView } from "./vault_web_home_view.tsx";
 import { ShareView } from "./vault_web_share_view.tsx";
 import { SkillsView } from "./vault_web_skills_view.tsx";
 import { FeedbackView, isDesktopApp } from "./vault_web_feedback_view.tsx";
+import { ReleaseNotesView } from "./vault_web_release_notes_view.tsx";
 import { PageFrame as CommonPageFrame } from "./vault_web_page_frame.tsx";
 import { githubApiFetch } from "../vault_web_fetch.ts";
 import { clearLastSync, readLastSync, subscribeLastSync } from "../vault_web_last_sync.ts";
@@ -52,7 +53,7 @@ import {
   t,
 } from "../vault_web_i18n.ts";
 
-export type VaultWebPage = "settings" | "account" | "share" | "skills" | "feedback";
+export type VaultWebPage = "settings" | "account" | "share" | "skills" | "feedback" | "updates";
 
 // --- ページの場所 ---
 // 同梱のページ（Library/Std/）の下に置き、vault のノートと名前がぶつからないようにする。
@@ -65,6 +66,7 @@ const pagePaths: Record<VaultWebPage, Path> = {
   share: "Library/Std/Rootlore/紹介.md",
   skills: "Library/Std/Rootlore/スキル.md",
   feedback: "Library/Std/Rootlore/要望.md",
+  updates: "Library/Std/Rootlore/アップデート履歴.md",
 };
 
 const pageTitles: Record<VaultWebPage, string> = {
@@ -73,6 +75,7 @@ const pageTitles: Record<VaultWebPage, string> = {
   share: t("紹介", "Share"),
   skills: t("スキル", "Skills"),
   feedback: t("要望", "Feedback"),
+  updates: t("アップデート履歴", "Update History"),
 };
 
 /** その場所が設定やアカウントのページなら、どちらか */
@@ -148,6 +151,10 @@ export function registerVaultWebDialogCommands(
   hook.registerCommand({
     name: "Vault: Feedback",
     run: () => openVaultWebPage(client, "feedback"),
+  });
+  hook.registerCommand({
+    name: "Vault: Update History",
+    run: () => openVaultWebPage(client, "updates"),
   });
 }
 
@@ -500,7 +507,16 @@ function SettingsPage({ client }: { client: Client }) {
         />
       </Section>
       <p className="vw-dialog-meta">
-        {t("バージョン", "Version")} {version}
+        {t("バージョン", "Version")} {version} ·{" "}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            void openVaultWebPage(client, "updates").catch((err) => client.reportError(err, "open page"));
+          }}
+        >
+          {t("アップデート履歴", "Update History")}
+        </a>
       </p>
     </PageFrame>
   );
@@ -874,6 +890,7 @@ export function VaultWebPageView({ client, path }: { client: Client; path?: stri
     );
   }
   if (page === "feedback") return <FeedbackView />;
+  if (page === "updates") return <ReleaseNotesView />;
   // ホーム（vault に同じ名前のノートがなく、GitHub から作ったとき）
   if (
     path &&

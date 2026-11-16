@@ -362,6 +362,7 @@ fn main() {
         .manage(PendingLogin::default())
         .manage(mcp::McpState::default())
         .manage(menu::MenuState::default())
+        .manage(update::Pending::default())
         .invoke_handler(tauri::generate_handler![report, mcp::mcp_result, menu::set_menu_state])
         .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()))
         .setup(|app| {
@@ -436,6 +437,11 @@ fn main() {
             update::check_after_start(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Rootlore");
+        .build(tauri::generate_context!())
+        .expect("error while running Rootlore")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                update::install_pending(app);
+            }
+        });
 }

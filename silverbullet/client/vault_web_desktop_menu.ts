@@ -1,5 +1,6 @@
 import type { Client } from "./client.ts";
 import { language, t } from "./vault_web_i18n.ts";
+import { releaseToAnnounce } from "./vault_web_releases.ts";
 
 declare global {
   var rootloreMenuAction: ((action: string) => void) | undefined;
@@ -9,6 +10,7 @@ const commands: Record<string, string> = {
   new: "Vault: New note", open: "Navigate: Page Picker", edit: "Vault: Edit note",
   settings: "Vault: Settings", shortcuts: "Vault: Settings", home: "Navigate: Home",
   sync: "Sync: Space", undo_move: "Vault: Undo move", redo_move: "Vault: Redo move",
+  updates: "Vault: Update History",
 };
 
 export function desktopMenuAction(client: Client, action: string): void {
@@ -48,5 +50,9 @@ export function installDesktopMenu(client: Client): () => void {
   const scheme = globalThis.matchMedia?.("(prefers-color-scheme: dark)");
   scheme?.addEventListener("change", update);
   update();
+  // 新しい版を初めて開いたときは、アップデート履歴を出す（画面の読み込みが落ち着いてから）
+  if (releaseToAnnounce(globalThis.localStorage)) {
+    setTimeout(() => desktopMenuAction(client, "updates"), 1500);
+  }
   return () => { observer.disconnect(); scheme?.removeEventListener("change", update); globalThis.rootloreMenuAction = undefined; };
 }

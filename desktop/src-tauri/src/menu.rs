@@ -16,6 +16,7 @@ fn build(app: &AppHandle, language: &str, can_save: bool) -> tauri::Result<(Menu
     let app_menu = SubmenuBuilder::new(app, "Rootlore")
         .about_with_text(t("Rootloreについて", "About Rootlore"), Some(AboutMetadata { name: Some("Rootlore".into()), version: Some(env!("CARGO_PKG_VERSION").into()), ..Default::default() }))
         .text("check_update", t("アップデートを確認…", "Check for Updates…"))
+        .text("updates", t("アップデート履歴…", "Update History…"))
         .separator().item(&settings).separator()
         .services_with_text(t("サービス", "Services")).separator()
         .hide_with_text(t("Rootloreを隠す", "Hide Rootlore"))
@@ -112,7 +113,7 @@ pub fn handle(app: &AppHandle, action: &str) {
         crate::update::check_from_menu(app.clone());
         return;
     }
-    if !matches!(action, "new" | "open" | "save" | "edit" | "settings" | "undo_move" | "redo_move" | "home" | "sync" | "reload" | "shortcuts") { return; }
+    if !matches!(action, "new" | "open" | "save" | "edit" | "settings" | "undo_move" | "redo_move" | "home" | "sync" | "reload" | "shortcuts" | "updates") { return; }
     if let Some(window) = app.get_webview_window("main") {
         // 画面は、公開中のサイトか、アプリが同梱した手元のサーバーのどちらでも動く
         let ours = window

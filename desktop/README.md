@@ -8,11 +8,14 @@ The title bar uses the macOS transparent style and applies the sidebar backgroun
 
 ## Update distribution
 
-Eight seconds after launch, the app reads `latest.json` and asks whether to install a newer version. "Update" replaces the app and reopens it. You can also check from Rootlore → Check for Updates….
+Eight seconds after launch, and every two hours after that, the app reads `latest.json`. If a newer version exists, it downloads it in the background without asking and installs it when you quit (`src-tauri/src/update.rs`), so the next launch runs the new version. Installing while the app runs would mix the running build with the new bundled UI, so it waits for quit. Rootlore → Check for Updates… still asks, installs, and reopens right away.
+
+The first time a new version opens, the app shows Update History (`silverbullet/client/vault_web_releases.ts`). It is also in the Rootlore menu, on the Settings page, and in the command `Vault: Update History`.
 
 - Manifest: `https://github.com/tanakaisworking/rootlore/releases/latest/download/latest.json`, a file attached to the latest app release.
+- Before building a release, add its notes (Japanese and English) to the top of `silverbullet/client/vault_web_releases.ts`, with the same version as `src-tauri/tauri.conf.json`.
 - To release the app: create a `v<version>` release of `tanakaisworking/rootlore` with `Rootlore.app.tar.gz`, its `.sig`, `latest.json` (this release's download URL and signature), and the current `cli-latest.json`. Mark it as the latest release. The manifest goes live with the release, so attach everything in one step.
-- Apps up to 0.0.8 read `https://raw.githubusercontent.com/tanakaisworking/rootlore-releases/main/latest.json` instead. Until `rootlore-releases` is archived, also commit the same `latest.json` there so those apps update to a version that reads the new location.
+- Apps up to 0.0.8 read `https://raw.githubusercontent.com/tanakaisworking/rootlore-releases/main/latest.json` instead. That archived repository points them to 0.0.9, which reads the new location.
 - Update archives are signed with the updater key. The public key is in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`, so the app installs only builds signed by the matching private key.
 
 ## How the app carries the UI
