@@ -3,6 +3,7 @@
 // 使い捨ての番号を rootlore:// のリンクでアプリに戻して、アプリの中のログイン状態にする（worker/auth.ts の /.auth/desktop）。
 // 番号だけ漏れても使えないよう、PKCE（verifier と challenge）を添える
 mod cli_link;
+mod error_report;
 mod guard;
 mod local;
 mod mcp;
@@ -366,7 +367,7 @@ fn main() {
         .manage(mcp::McpState::default())
         .manage(menu::MenuState::default())
         .manage(update::Pending::default())
-        .invoke_handler(tauri::generate_handler![report, mcp::mcp_result, menu::set_menu_state])
+        .invoke_handler(tauri::generate_handler![report, mcp::mcp_result, menu::set_menu_state, error_report::set_error_reports])
         .on_menu_event(|app, event| {
             guard::run("menu", || menu::handle(app, event.id().as_ref()));
         })

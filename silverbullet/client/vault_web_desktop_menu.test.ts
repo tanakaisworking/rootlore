@@ -30,9 +30,12 @@ test("menu state follows UI language and save availability, without repeatedly s
   vi.stubGlobal("document", { documentElement: root, querySelector: () => canSave ? {} : null });
   vi.stubGlobal("MutationObserver", class { constructor(callback: () => void) { changed = callback; } observe() {} disconnect = disconnect; });
   const dispose = installDesktopMenu({} as Client);
-  expect(invoke).toHaveBeenLastCalledWith("set_menu_state", { language: "ja", canSave: false, backgroundColor: "#262626" });
-  changed(); expect(invoke).toHaveBeenCalledOnce();
+  const menuCalls = () => invoke.mock.calls.filter((call: unknown[]) => call[0] === "set_menu_state");
+  expect(menuCalls().at(-1)).toEqual(["set_menu_state", { language: "ja", canSave: false, backgroundColor: "#262626" }]);
+  // 本体が受け止めた失敗を送るかも、画面の設定（標準はオン）から伝える
+  expect(invoke).toHaveBeenCalledWith("set_error_reports", { enabled: true });
+  changed(); expect(menuCalls()).toHaveLength(1);
   root.lang = "en"; canSave = true; color = "#f6f6f6"; changed();
-  expect(invoke).toHaveBeenLastCalledWith("set_menu_state", { language: "en", canSave: true, backgroundColor: "#f6f6f6" });
+  expect(menuCalls().at(-1)).toEqual(["set_menu_state", { language: "en", canSave: true, backgroundColor: "#f6f6f6" }]);
   dispose(); expect(disconnect).toHaveBeenCalledOnce(); expect(globalThis.rootloreMenuAction).toBeUndefined();
 });

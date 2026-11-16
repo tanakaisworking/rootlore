@@ -111,11 +111,26 @@ export function saveErrorReportsSetting(on: boolean): void {
   } catch {
     // 保存できないブラウザでは、この読み込みの間だけ切り替える
   }
+  tellDesktop(on);
   if (on) {
     startErrorReports();
   } else if (active) {
     active = false;
     void (getClient() as BrowserClient | undefined)?.close();
+  }
+}
+
+/**
+ * デスクトップ版の本体（Rust）にも、報告するかを伝える。本体が受け止めた失敗も、この設定に従って送る
+ * （desktop/src-tauri/src/error_report.rs）。本体は知らされるまで送らずに待つ。ブラウザ版では何もしない
+ */
+export function tellDesktop(on = errorReportsEnabled()): void {
+  const invoke = (globalThis as any).__TAURI_INTERNALS__?.invoke;
+  if (typeof invoke !== "function") return;
+  try {
+    void Promise.resolve(invoke("set_error_reports", { enabled: on })).catch(() => {});
+  } catch {
+    // 伝えられなくても、アプリは止めない（本体は送らずに待つだけ）
   }
 }
 

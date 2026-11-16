@@ -7,6 +7,8 @@
 // 送るイベントは、決めた項目だけで組み直す（buildEvent）。画面が何を付けてきても、それ以外は届かない。
 // - エラー文は、ブラウザ・JavaScript が出す種類（TypeError など）だけ残す。アプリが投げる Error の文には
 //   ノートのパスが入るので送らない（種類とスタックで追う）
+// - デスクトップ版の本体（Rust）が受け止めた失敗（RustPanic、desktop/src-tauri/src/error_report.rs）は、
+//   どこで何が起きたかの文が無いと追えないので、下の伏せる処理をかけたうえで残す
 // - URL はページの場所（ノートの名前）を消す
 
 /** 受け取る大きさの上限（バイト）。desktop/src-tauri/src/local.rs の ERRORS_MAX_BYTES と同じ値にする */
@@ -53,6 +55,9 @@ const ENGINE_ERRORS = new Set([
   "NotAllowedError", "NotSupportedError", "DataCloneError", "UnknownError", "TimeoutError",
 ]);
 
+/** 伏せたうえで文を残す、デスクトップ版の本体が送る種類 */
+const NATIVE_ERRORS = new Set(["RustPanic"]);
+
 /**
  * エンジンが出すエラー文の中の、ノートの名前やパスが入りうる部分を伏せる。
  * 引用（'flashNotification' のような識別子は残す）、URL、/ や \ を含む語、ファイル名
@@ -88,8 +93,8 @@ function fileOf(value: unknown): string | undefined {
   if (!s) return undefined;
   if (/^[a-z][\w+.-]*:/i.test(s)) return redactUrl(s);
   if (s === "<anonymous>" || s === "native" || s === "[native code]") return s;
-  // Worker のスタックはコードの相対パス（worker/index.ts など）。公開しているコードなので残す
-  return /^[\w./-]{1,200}\.(js|mjs|ts)$/.test(s) ? s : "[file]";
+  // Worker とデスクトップ版の本体のスタックはコードの相対パス（worker/index.ts、src/main.rs など）。公開しているコードなので残す
+  return /^[\w./-]{1,200}\.(js|mjs|ts|rs)$/.test(s) ? s : "[file]";
 }
 
 function frameOf(raw: unknown): Json | null {
@@ -115,7 +120,7 @@ function exceptionOf(raw: unknown, keepMessage: boolean): Json | null {
   const frames = obj(e.stacktrace)?.frames;
   return {
     type: safeType,
-    value: keepMessage || ENGINE_ERRORS.has(safeType) ? redactMessage(e.value) : undefined,
+    value: keepMessage || ENGINE_ERRORS.has(safeType) || NATIVE_ERRORS.has(safeType) ? redactMessage(e.value) : undefined,
     mechanism: mechanism
       ? { type: str(mechanism.type, 50), handled: typeof mechanism.handled === "boolean" ? mechanism.handled : undefined }
       : undefined,

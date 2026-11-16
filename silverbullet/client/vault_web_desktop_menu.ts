@@ -1,4 +1,5 @@
 import type { Client } from "./client.ts";
+import { tellDesktop } from "./vault_web_error_reports.ts";
 import { language, t } from "./vault_web_i18n.ts";
 import { releaseToAnnounce } from "./vault_web_releases.ts";
 
@@ -50,6 +51,8 @@ export function installDesktopMenu(client: Client): () => void {
   const scheme = globalThis.matchMedia?.("(prefers-color-scheme: dark)");
   scheme?.addEventListener("change", update);
   update();
+  // 本体（Rust）が受け止めた失敗を送るかは、画面の「エラーの報告」の設定に従う
+  tellDesktop();
   // 新しい版を初めて開いたときは、アップデート履歴を出す（画面の読み込みが落ち着いてから）
   if (releaseToAnnounce(globalThis.localStorage)) {
     setTimeout(() => desktopMenuAction(client, "updates"), 1500);

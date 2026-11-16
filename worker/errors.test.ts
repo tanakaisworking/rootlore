@@ -138,6 +138,22 @@ describe("buildEvent", () => {
     const event = buildEvent(exceptionEvent("Cannot restore: could not open Secret plan.", "Error"));
     expect(JSON.stringify(event)).not.toContain("Secret");
   });
+  it("keeps a redacted message and source locations for panics the desktop app contained", () => {
+    const event = buildEvent({
+      tags: { surface: "desktop" },
+      exception: { values: [{
+        type: "RustPanic",
+        value: "state() called before manage() for 'local::AppState' while opening /Users/alice/Notes/Secret plan.md",
+        stacktrace: { frames: [{ function: "deep-link-login", filename: "src/main.rs", lineno: 239 }] },
+      }] },
+    });
+    const text = JSON.stringify(event);
+    expect(text).toContain("state() called before manage()");
+    expect(text).toContain('"filename":"src/main.rs"');
+    expect(text).toContain('"function":"deep-link-login"');
+    expect(text).not.toContain("Secret");
+    expect(text).not.toContain("alice");
+  });
   it("rejects non-exception and malformed events without throwing", () => {
     expect(buildEvent({ message: "hello" })).toBeNull();
     expect(buildEvent(null)).toBeNull();

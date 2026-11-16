@@ -3,17 +3,26 @@
 //! macOS がアプリごと止める（GitHub でつないだ直後に落ちていた、2026-11-17）。
 //! 落ちうる処理（通信など）は別スレッドで動かし、その中もこの run で包む。
 use std::any::Any;
+use std::cell::RefCell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Mutex, MutexGuard};
 
-/// f を動かす。panic したら、どこで何が起きたかをログに残して None を返す
+thread_local! {
+    /// 直前の panic の場所（panic のフックが書き、run が読んで報告に付ける）
+    static LAST_LOCATION: RefCell<Option<(String, u32)>> = const { RefCell::new(None) };
+}
+
+/// f を動かす。panic したら、どこで何が起きたかをログに残し、報告して（error_report.rs）None を返す
 pub fn run<T>(name: &str, f: impl FnOnce() -> T) -> Option<T> {
     match catch_unwind(AssertUnwindSafe(f)) {
         Ok(value) => Some(value),
         Err(error) => {
+            let text = message(error.as_ref());
             crate::log(
-                &serde_json::json!({ "stage": "recovered-panic", "at": name, "message": message(error.as_ref()) }).to_string(),
+                &serde_json::json!({ "stage": "recovered-panic", "at": name, "message": text }).to_string(),
             );
+            let location = LAST_LOCATION.with(|l| l.borrow_mut().take());
+            crate::error_report::panic(name, &text, location);
             None
         }
     }
@@ -36,6 +45,7 @@ pub fn install_panic_log() {
     let default = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let location = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_default();
+        LAST_LOCATION.with(|l| *l.borrow_mut() = info.location().map(|l| (l.file().to_string(), l.line())));
         crate::log(
             &serde_json::json!({ "stage": "panic", "message": message(info.payload()), "location": location }).to_string(),
         );
