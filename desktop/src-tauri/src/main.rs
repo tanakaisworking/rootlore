@@ -235,7 +235,8 @@ fn handle_deep_link(app: &tauri::AppHandle, url: &Url) {
         }
     };
 
-    let state_handle = app.state::<local::AppState>();
+    // setup で Arc<AppState> として登録している。型が違うと state() は止まる（GitHub で繋いだ直後に落ちていた）
+    let state_handle = app.state::<std::sync::Arc<local::AppState>>();
     let Some(cookie) = cookie else {
         show_login_failed(app);
         return;

@@ -6,6 +6,12 @@ export type Release = { version: string; date: string; ja: string[]; en: string[
 
 export const releases: Release[] = [
   {
+    version: "0.0.11",
+    date: "2026-11-17",
+    ja: ["GitHub でログインしてアプリに戻ったとき、アプリが落ちてつながらなかった問題を直しました。"],
+    en: ["Fixed a crash right after signing in with GitHub, which left the app unconnected."],
+  },
+  {
     version: "0.0.10",
     date: "2026-11-17",
     ja: [
