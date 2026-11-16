@@ -24,3 +24,7 @@ ureq = { version = "2", features = ["json"] }
 keyring = { version = "3", features = ["apple-native"] }
 # 同梱したファイルの種類（Content-Type）を決める
 mime_guess = "2"
+
+# panic は止めずに受け止める（src/guard.rs）。"abort" にすると受け止められずアプリごと落ちるので変えない
+[profile.release]
+panic = "unwind"

@@ -6,6 +6,10 @@ The macOS menu lives in `src-tauri/src/menu.rs`. The client reports the UI langu
 
 The title bar uses the macOS transparent style and applies the sidebar background color to the NSWindow. It preserves the standard title-bar height and traffic-light position and follows light/dark mode changes.
 
+## Crash safety
+
+Every entry point the operating system or the page calls (menu, sign-in deep link, navigation, new windows, commands, quit) runs through `src-tauri/src/guard.rs`. A panic there is logged as `recovered-panic` in `~/Library/Logs/rootlore-desktop.log` and the app keeps running; a panic that escapes into Objective-C would make macOS abort the whole app. Work that can fail, such as the network calls after sign-in, runs on its own thread. Shared state uses `guard::lock`, so one failure does not poison every later access. The local server answers each request inside `guard::run`, so one bad request cannot stop it. Keep `panic = "unwind"` in `Cargo.toml`.
+
 ## Update distribution
 
 Eight seconds after launch, and every two hours after that, the app reads `latest.json`. If a newer version exists, it downloads it in the background without asking and installs it when you quit (`src-tauri/src/update.rs`), so the next launch runs the new version. Installing while the app runs would mix the running build with the new bundled UI, so it waits for quit. Rootlore → Check for Updates… still asks, installs, and reopens right away.

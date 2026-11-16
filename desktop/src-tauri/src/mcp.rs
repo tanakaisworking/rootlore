@@ -19,9 +19,11 @@ pub struct McpState {
 
 #[tauri::command]
 pub fn mcp_result(state: tauri::State<McpState>, id: u64, ok: bool, payload: String) {
-    if let Some(tx) = state.waiting.lock().unwrap().remove(&id) {
-        let _ = tx.send((ok, payload));
-    }
+    crate::guard::run("mcp-result", || {
+        if let Some(tx) = crate::guard::lock(&state.waiting).remove(&id) {
+            let _ = tx.send((ok, payload));
+        }
+    });
 }
 
 fn tools_list() -> Value {
@@ -38,12 +40,12 @@ fn tools_list() -> Value {
 fn call_tool(app: &AppHandle, name: &str, args: &Value) -> Result<String, String> {
     let state = app.state::<McpState>();
     let id = {
-        let mut n = state.next.lock().unwrap();
+        let mut n = crate::guard::lock(&state.next);
         *n += 1;
         *n
     };
     let (tx, rx) = mpsc::channel();
-    state.waiting.lock().unwrap().insert(id, tx);
+    crate::guard::lock(&state.waiting).insert(id, tx);
     let window = app.get_webview_window("main").ok_or("アプリの窓がありません")?;
     let script = format!(
         "window.__vwMcp ? window.__vwMcp.handle({id}, {}, {}) : window.__TAURI_INTERNALS__.invoke('mcp_result', {{id: {id}, ok: false, payload: 'Rootlore がまだ開いていません'}})",
@@ -52,7 +54,7 @@ fn call_tool(app: &AppHandle, name: &str, args: &Value) -> Result<String, String
     );
     window.eval(&script).map_err(|e| e.to_string())?;
     let result = rx.recv_timeout(Duration::from_secs(60));
-    state.waiting.lock().unwrap().remove(&id);
+    crate::guard::lock(&state.waiting).remove(&id);
     match result {
         Ok((true, payload)) => Ok(payload),
         Ok((false, message)) => Err(message),

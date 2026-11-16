@@ -36,7 +36,8 @@ pub fn check_after_start(app: AppHandle) {
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(8));
         loop {
-            tauri::async_runtime::block_on(fetch_in_background(app.clone()));
+            // 1回の確認で panic しても、次の確認は続ける
+            crate::guard::run("update-check", || tauri::async_runtime::block_on(fetch_in_background(app.clone())));
             std::thread::sleep(INTERVAL);
         }
     });

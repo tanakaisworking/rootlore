@@ -136,7 +136,8 @@ pub fn start(state: Arc<AppState>) -> Result<u16, String> {
     let server = Server::http(("127.0.0.1", PORT)).map_err(|e| format!("ローカルサーバーを起動できません: {e}"))?;
     std::thread::spawn(move || {
         for request in server.incoming_requests() {
-            let _ = respond(&state, request);
+            // 1件の応答で panic しても、サーバーは止めずに次の要求を受ける（止まると画面が出なくなる）
+            let _ = crate::guard::run("local-server", || respond(&state, request));
         }
     });
     Ok(PORT)
@@ -227,10 +228,10 @@ fn same_origin(request: &Request) -> bool {
 }
 
 fn send_config(state: &AppState, request: Request) -> Result<(), String> {
-    let repo = state.repo.lock().unwrap().clone();
-    let token = state.token.lock().unwrap().clone();
-    let cookie = state.cookie.lock().unwrap().clone();
-    let mode = *state.mode.lock().unwrap();
+    let repo = crate::guard::lock(&state.repo).clone();
+    let token = crate::guard::lock(&state.token).clone();
+    let cookie = crate::guard::lock(&state.cookie).clone();
+    let mode = *crate::guard::lock(&state.mode);
     // 繋がっているか。繋いでいなくても設定は返す（画面は開ける。ノートは空）
     let ready = repo.is_some()
         && match mode {
@@ -379,19 +380,19 @@ fn send_file(state: &AppState, request: Request, path: &str) -> Result<(), Strin
 
 fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, url: &str) -> Result<(), String> {
     // 決まった口だけを通す（トークンの有無を確かめる前に断る）
-    let repo = state.repo.lock().unwrap().clone();
+    let repo = crate::guard::lock(&state.repo).clone();
     if !allowed_api(method, path, repo.as_ref()) {
         let _ = request.respond(Response::empty(403));
         return Ok(());
     }
-    let mode = *state.mode.lock().unwrap();
+    let mode = *crate::guard::lock(&state.mode);
     let rest = strip_gh(path).unwrap_or("/");
     let query = url.split_once('?').map(|(_, q)| q).unwrap_or("");
     // トークン直: GitHub を直接叩く（うちのサーバーを通さない）
     // GitHub App: うちのサーバーの中継を通す（トークンの更新もサーバーが持つ）
     let (target, auth) = match mode {
         crate::store::Mode::Token => {
-            let Some(token) = state.token.lock().unwrap().clone() else {
+            let Some(token) = crate::guard::lock(&state.token).clone() else {
                 let _ = request.respond(Response::json_error(401, "login"));
                 return Ok(());
             };
@@ -403,7 +404,7 @@ fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, ur
             (target, Some(format!("Bearer {token}")))
         }
         crate::store::Mode::App => {
-            let Some(cookie) = state.cookie.lock().unwrap().clone() else {
+            let Some(cookie) = crate::guard::lock(&state.cookie).clone() else {
                 let _ = request.respond(Response::json_error(401, "login"));
                 return Ok(());
             };
@@ -418,7 +419,7 @@ fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, ur
     // 画面は「読む blob の SHA の一覧」だけを送ってくる（query は送らせない）。
     // GitHub に送る query は、ここで組み立てる（worker/proxy.ts の blobsGraphQL と同じ）
     if rest == "/graphql" {
-        let repo = state.repo.lock().unwrap().clone();
+        let repo = crate::guard::lock(&state.repo).clone();
         let Some((owner, name, _)) = repo else {
             let _ = request.respond(Response::json_error(401, "login"));
             return Ok(());
@@ -646,9 +647,9 @@ fn connect_with_token(state: &AppState, mut request: Request) -> Result<(), Stri
         let _ = request.respond(Response::json_message(500, "トークンを保存できませんでした。"));
         return Ok(());
     }
-    *state.token.lock().unwrap() = Some(token);
-    *state.mode.lock().unwrap() = crate::store::Mode::Token;
-    *state.repo.lock().unwrap() = Some((owner.to_string(), name.to_string(), branch.clone()));
+    *crate::guard::lock(&state.token) = Some(token);
+    *crate::guard::lock(&state.mode) = crate::store::Mode::Token;
+    *crate::guard::lock(&state.repo) = Some((owner.to_string(), name.to_string(), branch.clone()));
     let connection = crate::store::Connection {
         mode: crate::store::Mode::Token,
         repo: repo.clone(),
@@ -809,10 +810,10 @@ mod server_tests {
     /// 設定（/.config）を返すか、ログイン画面へ移すかの判断。
     /// 実際の応答は tiny_http の要求が要るので、判断に使う値だけを確かめる
     fn config_ready(state: &AppState) -> bool {
-        state.repo.lock().unwrap().is_some()
-            && match *state.mode.lock().unwrap() {
-                crate::store::Mode::Token => state.token.lock().unwrap().is_some(),
-                crate::store::Mode::App => state.cookie.lock().unwrap().is_some(),
+        crate::guard::lock(&state.repo).is_some()
+            && match *crate::guard::lock(&state.mode) {
+                crate::store::Mode::Token => crate::guard::lock(&state.token).is_some(),
+                crate::store::Mode::App => crate::guard::lock(&state.cookie).is_some(),
             }
     }
 
@@ -836,7 +837,7 @@ mod server_tests {
     fn config_is_served_once_connected() {
         let root = fixture();
         let state = state(root.clone(), Some(("me".into(), "notes".into(), "main".into())));
-        *state.token.lock().unwrap() = Some("ghp_test".into());
+        *crate::guard::lock(&state.token) = Some("ghp_test".into());
         assert!(config_ready(&state));
         let _ = std::fs::remove_dir_all(root);
     }
@@ -845,9 +846,9 @@ mod server_tests {
     fn app_mode_needs_the_cookie_instead_of_a_token() {
         let root = fixture();
         let state = state(root.clone(), Some(("me".into(), "notes".into(), "main".into())));
-        *state.mode.lock().unwrap() = crate::store::Mode::App;
+        *crate::guard::lock(&state.mode) = crate::store::Mode::App;
         assert!(!config_ready(&state), "Cookie が無ければ繋がっていない");
-        *state.cookie.lock().unwrap() = Some("vw_session=abc".into());
+        *crate::guard::lock(&state.cookie) = Some("vw_session=abc".into());
         assert!(config_ready(&state));
         let _ = std::fs::remove_dir_all(root);
     }

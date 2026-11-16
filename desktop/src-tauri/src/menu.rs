@@ -66,8 +66,13 @@ pub fn apply(app: &AppHandle, language: &str, can_save: bool) -> Result<(), Stri
 
 #[tauri::command]
 pub fn set_menu_state(app: AppHandle, language: String, can_save: bool, background_color: Option<String>) -> Result<(), String> {
+    crate::guard::run("set-menu-state", || set_menu_state_inner(&app, &language, can_save, background_color))
+        .unwrap_or_else(|| Err("menu state failed".into()))
+}
+
+fn set_menu_state_inner(app: &AppHandle, language: &str, can_save: bool, background_color: Option<String>) -> Result<(), String> {
     let color = background_color.as_deref().map(parse_color).transpose()?;
-    apply(&app, &language, can_save)?;
+    apply(app, language, can_save)?;
     if let (Some(color), Some(window)) = (color, app.get_webview_window("main")) {
         // WebViewのレイヤーではなく、透明なタイトルバーの下地になるNSWindowの色を合わせる。
         window.as_ref().window().set_background_color(Some(color)).map_err(|e| e.to_string())?;

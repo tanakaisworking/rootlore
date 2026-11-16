@@ -3,6 +3,7 @@
 // 使い捨ての番号を rootlore:// のリンクでアプリに戻して、アプリの中のログイン状態にする（worker/auth.ts の /.auth/desktop）。
 // 番号だけ漏れても使えないよう、PKCE（verifier と challenge）を添える
 mod cli_link;
+mod guard;
 mod local;
 mod mcp;
 mod menu;
@@ -98,7 +99,7 @@ pub(crate) fn log(msg: &str) {
 
 #[tauri::command]
 fn report(msg: String) {
-    log(&msg);
+    guard::run("report", || log(&msg));
 }
 
 /// 同梱した CLI を ~/.local/bin/rootlore に張る（cli_link.rs）。失敗してもアプリは止めない
@@ -151,7 +152,7 @@ fn write_mcp_config(app: &tauri::AppHandle, token: &str) {
 /// ふだんのブラウザで「アプリでログイン」を開く
 fn start_browser_login(app: &tauri::AppHandle) {
     let pending = app.state::<PendingLogin>();
-    let mut guard = pending.0.lock().unwrap();
+    let mut guard = crate::guard::lock(&pending.0);
     if let Some((_, _, at)) = guard.as_ref() {
         if at.elapsed() < REOPEN_AFTER {
             return;
@@ -190,7 +191,7 @@ fn handle_deep_link(app: &tauri::AppHandle, url: &Url) {
     let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
     let (Some(code), Some(state)) = (query.get("code"), query.get("state")) else { return };
     let pending = app.state::<PendingLogin>();
-    let expected = pending.0.lock().unwrap().take();
+    let expected = crate::guard::lock(&pending.0).take();
     let verifier = match expected {
         Some((s, verifier, _)) if &s == state => verifier,
         _ => {
@@ -241,11 +242,11 @@ fn handle_deep_link(app: &tauri::AppHandle, url: &Url) {
         show_login_failed(app);
         return;
     };
-    *state_handle.cookie.lock().unwrap() = Some(cookie.clone());
-    *state_handle.mode.lock().unwrap() = store::Mode::App;
+    *crate::guard::lock(&state_handle.cookie) = Some(cookie.clone());
+    *crate::guard::lock(&state_handle.mode) = store::Mode::App;
     // 繋ぎ先は、うちのサーバーの設定から受け取る（リポジトリとブランチ）
     if let Some((owner, name, branch)) = server_repo(&agent, &cookie) {
-        *state_handle.repo.lock().unwrap() = Some((owner.clone(), name.clone(), branch.clone()));
+        *crate::guard::lock(&state_handle.repo) = Some((owner.clone(), name.clone(), branch.clone()));
         let dir = app.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
         let _ = store::save(
             &dir,
@@ -355,6 +356,7 @@ fn frontend_reset_script(stamp: &str) -> String {
 }
 
 fn main() {
+    guard::install_panic_log();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
@@ -365,14 +367,22 @@ fn main() {
         .manage(menu::MenuState::default())
         .manage(update::Pending::default())
         .invoke_handler(tauri::generate_handler![report, mcp::mcp_result, menu::set_menu_state])
-        .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()))
+        .on_menu_event(|app, event| {
+            guard::run("menu", || menu::handle(app, event.id().as_ref()));
+        })
         .setup(|app| {
-            link_cli();
+            guard::run("cli-link", link_cli);
             menu::apply(app.handle(), "en", false).map_err(std::io::Error::other)?;
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
+                // ログインの戻り。通信を含むので、画面のスレッドでは動かさない（OS から呼ばれる所で止まると、アプリごと落ちる）
                 for url in event.urls() {
-                    handle_deep_link(&handle, &url);
+                    let handle = handle.clone();
+                    guard::spawn("deep-link", move || {
+                        if guard::run("deep-link-login", || handle_deep_link(&handle, &url)).is_none() {
+                            show_login_failed(&handle);
+                        }
+                    });
                 }
             });
             // 同梱した画面を、手元のサーバー（127.0.0.1）で配る。
@@ -407,26 +417,31 @@ fn main() {
                 .initialization_script(include_str!("mcp.js"))
                 // うちのサーバーのログイン画面へ移る動きだけ、ブラウザでのログインに置き換える
                 .on_navigation(move |url| {
-                    // 手元の画面から「GitHub でログイン」を押したとき（/.auth/login）と、
-                    // 公開中のサイトのログイン画面に移ろうとしたときだけ、ブラウザでのログインに置き換える
-                    let local_login = matches!(url.host_str(), Some("127.0.0.1") | Some("localhost"))
-                        && url.path() == "/.auth/login";
-                    let remote_login = url.host_str() == Some(HOST)
-                        && (url.path() == "/.auth" || url.path() == "/.auth/login");
-                    if local_login || remote_login {
-                        start_browser_login(&nav);
-                        return false;
-                    }
-                    true
+                    guard::run("navigation", || {
+                        // 手元の画面から「GitHub でログイン」を押したとき（/.auth/login）と、
+                        // 公開中のサイトのログイン画面に移ろうとしたときだけ、ブラウザでのログインに置き換える
+                        let local_login = matches!(url.host_str(), Some("127.0.0.1") | Some("localhost"))
+                            && url.path() == "/.auth/login";
+                        let remote_login = url.host_str() == Some(HOST)
+                            && (url.path() == "/.auth" || url.path() == "/.auth/login");
+                        if local_login || remote_login {
+                            start_browser_login(&nav);
+                            return false;
+                        }
+                        true
+                    })
+                    .unwrap_or(true)
                 })
                 // 新しい窓で開くリンク（target="_blank" や window.open。要望の GitHub の Issue など）は、
                 // アプリの中では受け皿がなく何も起きないので、ふだんのブラウザで開く。http と https だけ
                 .on_new_window(move |url, _features| {
-                    if matches!(url.scheme(), "http" | "https") {
-                        if let Err(e) = new_window.opener().open_url(url.as_str(), None::<&str>) {
-                            log(&format!("open-external-failed {e}"));
+                    guard::run("new-window", || {
+                        if matches!(url.scheme(), "http" | "https") {
+                            if let Err(e) = new_window.opener().open_url(url.as_str(), None::<&str>) {
+                                log(&format!("open-external-failed {e}"));
+                            }
                         }
-                    }
+                    });
                     tauri::webview::NewWindowResponse::Deny
                 });
             #[cfg(target_os = "macos")]
@@ -442,7 +457,7 @@ fn main() {
         .expect("error while running Rootlore")
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {
-                update::install_pending(app);
+                guard::run("install-on-exit", || update::install_pending(app));
             }
         });
 }

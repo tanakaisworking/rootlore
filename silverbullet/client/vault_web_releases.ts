@@ -8,8 +8,14 @@ export const releases: Release[] = [
   {
     version: "0.0.11",
     date: "2026-11-17",
-    ja: ["GitHub でログインしてアプリに戻ったとき、アプリが落ちてつながらなかった問題を直しました。"],
-    en: ["Fixed a crash right after signing in with GitHub, which left the app unconnected."],
+    ja: [
+      "GitHub でログインしてアプリに戻ったとき、アプリが落ちてつながらなかった問題を直しました。",
+      "アプリの中で思わぬ失敗が起きても、アプリごと落ちずに、その操作だけを止めて続けるようにしました。",
+    ],
+    en: [
+      "Fixed a crash right after signing in with GitHub, which left the app unconnected.",
+      "If something unexpected fails inside the app, only that action stops; the app keeps running.",
+    ],
   },
   {
     version: "0.0.10",
