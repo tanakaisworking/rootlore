@@ -44,14 +44,14 @@ function goToLogin() {
 }
 
 /**
- * 書き込み（/commit・/move）に添える、この画面が開いているリポジトリ（owner/repo）。
+ * 書き込み（/commit・/move・/delete）に添える、この画面が開いているリポジトリ（owner/repo）。
  * 別のタブでリポジトリを切り替えると、Cookie のセッションは新しいほうを指す。古いタブからの書き込みが
  * 新しいリポジトリに入らないよう、Worker が照合する（worker/index.ts。違えば 412 {error:"repo"}）
  */
 export const repoHeader = "X-Rootlore-Repo";
 
 function expectedRepo(path: string): string | undefined {
-  if (path !== "/commit" && path !== "/move") return undefined;
+  if (path !== "/commit" && path !== "/move" && path !== "/delete") return undefined;
   const repo = (globalThis as any).client?.bootConfig?.githubRepo as { owner: string; repo: string } | null | undefined;
   return repo ? `${repo.owner}/${repo.repo}` : undefined;
 }

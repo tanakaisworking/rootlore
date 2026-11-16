@@ -396,6 +396,29 @@ fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, ur
                 let _ = request.respond(Response::json_error(401, "login"));
                 return Ok(());
             };
+            // 書き込み（保存・移動・削除）は、うちのサーバーと同じ決まりで GitHub に直接行う（direct_write.rs）。
+            // 以前は GitHub に無い宛先（api.github.com/commit など）へ送っていて、トークンでつなぐと書き込めなかった
+            if matches!(rest, "/commit" | "/move" | "/delete") {
+                let Some((owner, name, branch)) = repo.clone() else {
+                    let _ = request.respond(Response::json_error(401, "login"));
+                    return Ok(());
+                };
+                let expected = request
+                    .headers()
+                    .iter()
+                    .find(|h| h.field.equiv("X-Rootlore-Repo"))
+                    .map(|h| h.value.as_str().to_string());
+                let mut body = Vec::new();
+                request.as_reader().read_to_end(&mut body).map_err(|e| e.to_string())?;
+                let target = crate::direct_write::Target { token: &token, owner: &owner, repo: &name, branch: &branch };
+                let (status, reply) = crate::direct_write::handle(rest, &body, expected.as_deref(), &target);
+                let json = Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap();
+                let cache = Header::from_bytes(&b"Cache-Control"[..], &b"no-store"[..]).unwrap();
+                let _ = request.respond(
+                    Response::from_string(reply.to_string()).with_status_code(status).with_header(json).with_header(cache),
+                );
+                return Ok(());
+            }
             let target = if rest == "/graphql" {
                 "https://api.github.com/graphql".to_string()
             } else {

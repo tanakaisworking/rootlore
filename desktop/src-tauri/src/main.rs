@@ -3,6 +3,7 @@
 // 使い捨ての番号を rootlore:// のリンクでアプリに戻して、アプリの中のログイン状態にする（worker/auth.ts の /.auth/desktop）。
 // 番号だけ漏れても使えないよう、PKCE（verifier と challenge）を添える
 mod cli_link;
+mod direct_write;
 mod error_report;
 mod guard;
 mod local;
