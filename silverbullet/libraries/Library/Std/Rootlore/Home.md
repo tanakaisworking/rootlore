@@ -37,4 +37,11 @@ table.insert(config.get("actionButtons", {}), {
   priority = 2.5,
   dropdown = false,
 })
+table.insert(config.get("actionButtons", {}), {
+  icon = "file-plus",
+  description = "ここに新しいノート",
+  command = "Vault: New note here",
+  priority = 1.9,
+  dropdown = false,
+})
 ```

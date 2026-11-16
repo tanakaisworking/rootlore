@@ -27,6 +27,7 @@ const descriptions: Record<string, string> = {
   "Go forward": t("進む", "Forward"),
   "編集": t("編集", "Edit"),
   "最新の状態に更新": t("最新の状態に更新", "Refresh from GitHub"),
+  "ここに新しいノート": t("ここに新しいノート", "New note here"),
 };
 
 // 元の設定の絵を、わかりやすい絵に替える（ノートを検索は本ではなく虫眼鏡）

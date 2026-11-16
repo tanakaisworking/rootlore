@@ -59,7 +59,7 @@ import { setRevisionsAvailable } from "./navigator/builtins.ts";
 import { registerNavigatorCommands } from "./navigator/commands.ts";
 import { registerVaultWebEditCommand } from "./vault_web_edit.ts";
 import { registerVaultMoveCommands } from "./vault_web_move.ts";
-import { registerVaultNewNoteCommand } from "./vault_web_new_note.ts";
+import { registerVaultNewNoteCommand, registerVaultNewNoteHereCommand } from "./vault_web_new_note.ts";
 import { registerVaultDeleteCommand } from "./vault_web_delete.ts";
 import { registerVaultWebDialogCommands } from "./components/vault_web_dialogs.tsx";
 import { restoreDocks, setViewDefaults } from "./navigator/navigator.ts";
@@ -168,6 +168,7 @@ export class ClientSystem {
     registerVaultWebEditCommand(client, this.commandHook);
     registerVaultMoveCommands(client, this.commandHook);
     registerVaultNewNoteCommand(client, this.commandHook);
+    registerVaultNewNoteHereCommand(client, this.commandHook);
     registerVaultDeleteCommand(client, this.commandHook);
     // vault-web: 設定のページとアカウントのページ（client/components/vault_web_dialogs.tsx）
     registerVaultWebDialogCommands(client, this.commandHook);
