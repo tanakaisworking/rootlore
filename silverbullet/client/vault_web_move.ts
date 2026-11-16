@@ -28,6 +28,40 @@ export function registerVaultMoveCommands(client: Client, hook: CommandHook) {
   if (!client.bootConfig.githubRepo) return;
   hook.registerCommand({ name: "Vault: Undo move", ...shortcutKeys("Vault: Undo move"), run: () => undoVaultMove(client) });
   hook.registerCommand({ name: "Vault: Redo move", ...shortcutKeys("Vault: Redo move"), run: () => redoVaultMove(client) });
+  hook.registerCommand({ name: renameNoteCommand, run: () => renameCurrentNote(client) });
+}
+
+/** ノートのタイトルを押したとき（components/top_bar.tsx）。同じフォルダの中で名前だけ変える */
+export const renameNoteCommand = "Vault: Rename note";
+
+/** 名前を変えた後の場所。フォルダと拡張子はそのまま。使えない名前や、変わらない名前なら undefined */
+export function renamedPath(path: string, name: string): string | undefined {
+  const slash = path.lastIndexOf("/");
+  const folder = path.slice(0, slash + 1);
+  const file = path.slice(slash + 1);
+  const dot = file.lastIndexOf(".");
+  const ext = dot > 0 ? file.slice(dot) : "";
+  let base = name.trim();
+  if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length).trim();
+  if (!base || base.startsWith(".") || /[\/\\:\u0000-\u001f\u007f]/.test(base)) return undefined;
+  const next = folder + base + ext;
+  return next === path ? undefined : next;
+}
+
+async function renameCurrentNote(client: Client): Promise<void> {
+  const path = client.currentPath();
+  if (!path || path.startsWith("Library/")) return;
+  const file = path.slice(path.lastIndexOf("/") + 1);
+  const dot = file.lastIndexOf(".");
+  const current = dot > 0 ? file.slice(0, dot) : file;
+  const name = await client.ui.prompt(t("新しい名前", "New name"), current);
+  if (name === undefined || name.trim() === current) return;
+  const next = renamedPath(path, name);
+  if (!next) {
+    client.ui.flashNotification(t("名前を確認してください。空の名前、「.」で始まる名前、/ を含む名前は使えません。", "Check the name. Empty names, names starting with a dot, and names with / aren't allowed."), "error");
+    return;
+  }
+  await moveVaultFile(client, path, next, client.currentPageMeta()?.lastModified);
 }
 
 export function undoVaultMove(client: Client): Promise<boolean> {

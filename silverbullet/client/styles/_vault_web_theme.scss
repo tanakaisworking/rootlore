@@ -297,6 +297,23 @@ html[data-theme="dark"] {
   }
 }
 
+// 押して名前を変えられるタイトル（components/top_bar.tsx）。見た目はふつうのタイトルのまま、乗せたときだけ下線
+#sb-top .vw-page-title-rename {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
 // タイトルの横の「パスをコピー」（components/top_bar.tsx）。目立たせず、乗せたときだけ濃くする
 #sb-top .vw-copy-path {
   flex: none;

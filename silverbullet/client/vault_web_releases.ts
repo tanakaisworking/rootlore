@@ -11,12 +11,14 @@ export const releases: Release[] = [
     ja: [
       "ノートの名前の横に「パスをコピー」を付けました。AI に「このノートのこと」と伝えるときに、vault の中の場所（フォルダは フォルダ名/）をそのまま貼れます。",
       "上のバーの「編集」の隣に「削除」を付けました。読み込んだあとに誰か（AI など）が書き換えていたら消さずに止めます。消したノートも GitHub の履歴から戻せます。",
-      "左のサイドバーの検索の隣に「ここに新しいノート」を付けました。開いているノートと同じフォルダ（フォルダの一覧ならその中）に作って、すぐ開きます。",
+      "左のサイドバーの検索の隣に「ここに新しいノート」を付けました。開いているノートと同じフォルダ（フォルダの一覧ならその中）に「無題のノート」を作って、すぐ開きます。",
+      "ノートのタイトルを押すと、名前を変えられるようにしました。",
     ],
     en: [
       "Added Copy path next to the note title. Paste the note's place in your vault (a folder ends with /) to tell an AI which note you mean.",
       "Added Delete next to Edit in the top bar. If someone (such as an AI) changed the note after it was loaded, it stops instead of deleting. Deleted notes can be restored from the GitHub history.",
-      "Added New note here next to Search in the sidebar. It creates the note in the open note's folder (or inside an open folder) and opens it.",
+      "Added New note here next to Search in the sidebar. It creates an untitled note in the open note's folder (or inside an open folder) and opens it.",
+      "Click a note's title to rename it.",
     ],
   },
   {

@@ -4,11 +4,21 @@ import { inlineEditor } from "./vault_web_inline_edit.ts";
 import { sync } from "@silverbulletmd/silverbullet/syscalls";
 import { githubApiFetch } from "./vault_web_fetch.ts";
 import { gitBlobSha, listDrafts } from "./vault_web_save.ts";
-import { moveVaultFile, undoVaultMove, redoVaultMove } from "./vault_web_move.ts";
+import { moveVaultFile, renamedPath, undoVaultMove, redoVaultMove } from "./vault_web_move.ts";
 
 vi.mock("@silverbulletmd/silverbullet/syscalls", () => ({ sync: { performSpaceSync: vi.fn() } }));
 vi.mock("./vault_web_fetch.ts", () => ({ githubApiFetch: vi.fn() }));
 vi.mock("./vault_web_i18n.ts", () => ({ t: (ja: string) => ja }));
+
+test("renaming keeps the folder and the extension, and refuses names that would move the file", () => {
+  expect(renamedPath("Projects/rootlore/無題のノート.md", "計画")).toBe("Projects/rootlore/計画.md");
+  expect(renamedPath("Projects/rootlore/無題のノート.md", " 計画.md ")).toBe("Projects/rootlore/計画.md");
+  expect(renamedPath("top.md", "新しい名前")).toBe("新しい名前.md");
+  expect(renamedPath("Notes/table.base", "一覧")).toBe("Notes/一覧.base");
+  for (const name of ["", "  ", ".hidden", "a/b", "a\\b", "無題のノート"]) {
+    expect(renamedPath("Projects/rootlore/無題のノート.md", name)).toBeUndefined();
+  }
+});
 vi.mock("./vault_web_save.ts", async (original) => ({
   ...await original<typeof import("./vault_web_save.ts")>(), listDrafts: vi.fn(() => []),
 }));

@@ -285,13 +285,26 @@ function PageNameEditor({
 
 /**
  * vault-web: タイトル欄にはノート名（パスの最後の部分）だけを出す。フォルダを含む全体は、
- * マウスを乗せると見える。名前の変更はできないので、編集できない
+ * マウスを乗せると見える。onRename を渡したとき（vault のファイル）は、押すと名前を変えられる（vault_web_move.ts）
  */
-function PageTitle({ pageName }: { pageName?: string }) {
+function PageTitle({ pageName, onRename }: { pageName?: string; onRename?: () => void }) {
   const path = pageName ?? "";
+  const name = path.split("/").pop() || path;
+  if (onRename) {
+    return (
+      <button
+        type="button"
+        className="vw-page-title vw-page-title-rename"
+        title={`${path}\n${t("押すと名前を変更", "Click to rename")}`}
+        onClick={onRename}
+      >
+        {name}
+      </button>
+    );
+  }
   return (
     <span className="vw-page-title" title={path}>
-      {path.split("/").pop() || path}
+      {name}
     </span>
   );
 }
@@ -307,6 +320,7 @@ export function TopBar({
   actionButtons,
   extraActions,
   onCopyPath,
+  onRenameTitle,
   progressPercentage,
   progressType,
   progressWithLabel,
@@ -334,6 +348,8 @@ export function TopBar({
   extraActions?: ComponentChildren;
   /** vault-web: 「パスをコピー」。vault のファイルではないページでは渡さない（vault_web_copy_path.ts） */
   onCopyPath?: () => void;
+  /** vault-web: タイトルを押して名前を変える。vault のファイルのときだけ渡す */
+  onRenameTitle?: () => void;
   lhs?: ComponentChildren;
   rhs?: ComponentChildren;
   pageNamePrefix?: string;
@@ -362,7 +378,7 @@ export function TopBar({
               id="sb-current-page"
               className={pageNameClass(isLoading, unsavedChanges, cssClass)}
             >
-              <PageTitle pageName={pageName} />
+              <PageTitle pageName={pageName} onRename={onRenameTitle} />
             </span>
             {onCopyPath && (
               <button

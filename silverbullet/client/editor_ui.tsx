@@ -13,6 +13,7 @@ import * as featherIcons from "preact-feather";
 import type { Client } from "./client.ts";
 import { canEditNote, editNoteCommand, historyUrlFor, noteHistoryCommand } from "./vault_web_edit.ts";
 import { deleteNoteCommand } from "./vault_web_delete.ts";
+import { renameNoteCommand } from "./vault_web_move.ts";
 import { VaultWebNoteEditor } from "./components/vault_web_note_editor.tsx";
 import { t } from "./vault_web_i18n.ts";
 import { copyablePath } from "./vault_web_copy_path.ts";
@@ -490,6 +491,15 @@ export class MainUI {
       }
     }, [navSlots.bhs, plugBhsMode]);
 
+    // vault-web: 開いているページの、vault の中での場所。vault のファイルでないページは undefined、
+    // フォルダの一覧は「フォルダ/」（vault_web_copy_path.ts）。パスをコピーと、タイトルを押して名前を変えるに使う
+    const vaultPath = copyablePath(viewState.current?.path, {
+      appPage: !!vaultWebPageFor(viewState.current?.path),
+      homeShown: client.contentManager?.vaultWebHomeShown,
+      folderShown: client.contentManager?.vaultWebFolderShown,
+      missingShown: client.contentManager?.missingPageShown,
+    });
+
     return (
       <>
         {viewState.showFilterBox && (
@@ -677,22 +687,17 @@ export class MainUI {
               }),
           ]}
           extraActions={<VaultWebNoteEditor client={client} />}
-          onCopyPath={(() => {
-            // vault-web: AI などに場所を伝えるための「パスをコピー」（vault_web_copy_path.ts）
-            const path = copyablePath(viewState.current?.path, {
-              appPage: !!vaultWebPageFor(viewState.current?.path),
-              homeShown: client.contentManager?.vaultWebHomeShown,
-              folderShown: client.contentManager?.vaultWebFolderShown,
-              missingShown: client.contentManager?.missingPageShown,
-            });
-            if (!path) return undefined;
-            return () => {
-              copyToClipboard(path).then(
-                () => client.ui.flashNotification(t(`パスをコピーしました: ${path}`, `Copied path: ${path}`)),
-                () => client.ui.flashNotification(t("パスをコピーできませんでした。", "Couldn't copy the path."), "error"),
-              );
-            };
-          })()}
+          // vault-web: AI などに場所を伝えるための「パスをコピー」
+          onCopyPath={vaultPath ? () => {
+            copyToClipboard(vaultPath).then(
+              () => client.ui.flashNotification(t(`パスをコピーしました: ${vaultPath}`, `Copied path: ${vaultPath}`)),
+              () => client.ui.flashNotification(t("パスをコピーできませんでした。", "Couldn't copy the path."), "error"),
+            );
+          } : undefined}
+          // vault-web: vault のファイル（フォルダの一覧ではない）は、タイトルを押して名前を変えられる（vault_web_move.ts）
+          onRenameTitle={vaultPath && !vaultPath.endsWith("/") && client.bootConfig.githubRepo
+            ? () => void client.runCommandByName(renameNoteCommand).catch((e) => client.reportError(e, "rename note"))
+            : undefined}
           rhs={sidebarSpacer("rhs")}
           lhs={sidebarSpacer("lhs") || (showLeftRail && <SidebarRailSpacer />)}
           // vault-web: スマートフォンの「☰」は、閉じたあとも左のサイドバーを開けるようにする

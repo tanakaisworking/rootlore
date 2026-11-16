@@ -73,21 +73,38 @@ test("New note here creates beside the open note, inside an open folder, or at t
   expect(newNoteFolder(undefined)).toBe("");
 });
 
-test("New note here asks for a name and creates the note in the open note's folder", async () => {
-  vi.mocked(githubApiFetch).mockResolvedValue(Response.json({ files: [{ path: "Projects/rootlore/plan.md", sha: "a".repeat(40) }] }));
+function setupHere() {
   let command: Command;
   const client = {
     bootConfig: { githubRepo: {} },
     currentPath: () => "Projects/rootlore/index.md",
     contentManager: {},
-    ui: { prompt: vi.fn(async () => "plan"), flashNotification: vi.fn() },
+    ui: { prompt: vi.fn(async () => "never asked"), flashNotification: vi.fn() },
     navigate: vi.fn(async () => {}), reportError: vi.fn(),
   } as unknown as Client;
   registerVaultNewNoteHereCommand(client, { registerCommand: (c: Command) => { command = c; } } as CommandHook);
-  await command!.run!();
-  expect(vi.mocked(client.ui.prompt).mock.calls[0][0]).toContain("Projects/rootlore/");
+  return { client, run: () => command.run!() };
+}
+const created = (path: string) => Response.json({ files: [{ path, sha: "a".repeat(40) }] });
+
+test("New note here creates an untitled note beside the open note without asking, and opens it", async () => {
+  vi.mocked(githubApiFetch).mockResolvedValue(created("Projects/rootlore/無題のノート.md"));
+  const { client, run } = setupHere();
+  await run();
+  expect(client.ui.prompt).not.toHaveBeenCalled();
   const body = JSON.parse(vi.mocked(githubApiFetch).mock.calls[0][2]!.body as string);
-  expect(body.files[0].path).toBe("Projects/rootlore/plan.md");
-  expect(client.navigate).toHaveBeenCalledWith({ path: "Projects/rootlore/plan.md" });
-  expect(openNoteEditor).toHaveBeenCalledExactlyOnceWith("Projects/rootlore/plan.md");
+  expect(body.files[0]).toEqual({ path: "Projects/rootlore/無題のノート.md", content: "", baseSha: null });
+  expect(client.navigate).toHaveBeenCalledWith({ path: "Projects/rootlore/無題のノート.md" });
+  expect(openNoteEditor).toHaveBeenCalledExactlyOnceWith("Projects/rootlore/無題のノート.md");
+});
+
+test("New note here numbers the untitled name when it is taken, and never overwrites", async () => {
+  vi.mocked(githubApiFetch)
+    .mockResolvedValueOnce(Response.json({ conflicts: [] }, { status: 409 }))
+    .mockResolvedValueOnce(created("Projects/rootlore/無題のノート 2.md"));
+  const { client, run } = setupHere();
+  await run();
+  const paths = vi.mocked(githubApiFetch).mock.calls.map((call) => JSON.parse(call[2]!.body as string).files[0].path);
+  expect(paths).toEqual(["Projects/rootlore/無題のノート.md", "Projects/rootlore/無題のノート 2.md"]);
+  expect(client.navigate).toHaveBeenCalledWith({ path: "Projects/rootlore/無題のノート 2.md" });
 });
