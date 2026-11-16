@@ -396,6 +396,7 @@ fn main() {
             // 起動したら、まず画面を出す。繋ぎ方はアカウントのページから選ぶ
             let start = format!("http://127.0.0.1:{port}/v/");
             let nav = app.handle().clone();
+            let new_window = app.handle().clone();
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(start.parse().unwrap()))
                 .title("Rootlore")
                 .inner_size(1200.0, 800.0)
@@ -415,6 +416,16 @@ fn main() {
                         return false;
                     }
                     true
+                })
+                // 新しい窓で開くリンク（target="_blank" や window.open。要望の GitHub の Issue など）は、
+                // アプリの中では受け皿がなく何も起きないので、ふだんのブラウザで開く。http と https だけ
+                .on_new_window(move |url, _features| {
+                    if matches!(url.scheme(), "http" | "https") {
+                        if let Err(e) = new_window.opener().open_url(url.as_str(), None::<&str>) {
+                            log(&format!("open-external-failed {e}"));
+                        }
+                    }
+                    tauri::webview::NewWindowResponse::Deny
                 });
             #[cfg(target_os = "macos")]
             let window = window.hidden_title(true).title_bar_style(tauri::TitleBarStyle::Transparent);
