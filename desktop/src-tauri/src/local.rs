@@ -424,8 +424,8 @@ fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, ur
             let _ = request.respond(Response::json_error(401, "login"));
             return Ok(());
         };
-        match blobs_query(&body, &owner, &name) {
-            Some(query) => body = query.into_bytes(),
+        match graphql_body(mode, &body, &owner, &name) {
+            Some(next) => body = next,
             None => {
                 let _ = request.respond(Response::empty(403));
                 return Ok(());
@@ -551,6 +551,17 @@ fn send_login(state: &AppState, request: Request) -> Result<(), String> {
     Ok(())
 }
 
+
+/// GitHub の GraphQL に送る本文。どちらの繋ぎ方でも、まず画面から届いた一覧の形を確かめる（blobs_query）。
+/// トークン直は、GitHub に送る問い合わせをここで組み立てる。GitHub App はうちのサーバーが組み立てるので、
+/// 一覧のまま送る（組み立てたものを送るとサーバーが断り、ノートの中身が取り込めなかった。worker/proxy.ts の blobsGraphQL）
+fn graphql_body(mode: crate::store::Mode, body: &[u8], owner: &str, repo: &str) -> Option<Vec<u8>> {
+    let query = blobs_query(body, owner, repo)?;
+    Some(match mode {
+        crate::store::Mode::Token => query.into_bytes(),
+        crate::store::Mode::App => body.to_vec(),
+    })
+}
 
 /// 画面から届いた blob の SHA の一覧を、GitHub に送れる GraphQL の本文にする。
 /// 一覧に無いもの（ほかのリポジトリ、形の違う値）が混ざっていれば None
@@ -727,6 +738,19 @@ mod tests {
 #[cfg(test)]
 mod blobs_tests {
     use super::*;
+
+    #[test]
+    fn app_mode_forwards_the_sha_list_and_token_mode_builds_the_query() {
+        let sha = "0123456789abcdef0123456789abcdef01234567";
+        let body = format!(r#"{{"shas":["{sha}"]}}"#);
+        // うちのサーバー（worker/proxy.ts の blobsGraphQL）は一覧の形で受け取る
+        let app = graphql_body(crate::store::Mode::App, body.as_bytes(), "me", "notes").unwrap();
+        assert_eq!(app, body.as_bytes());
+        let token = graphql_body(crate::store::Mode::Token, body.as_bytes(), "me", "notes").unwrap();
+        assert!(String::from_utf8(token).unwrap().contains("object(oid:"));
+        // 形の違う一覧は、どちらでも送らない
+        assert!(graphql_body(crate::store::Mode::App, br#"{"query":"{ viewer { login } }"}"#, "me", "notes").is_none());
+    }
 
     #[test]
     fn builds_the_blob_query_from_shas() {

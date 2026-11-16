@@ -92,6 +92,10 @@ const PROBE: &str = r#"
 "#;
 
 pub(crate) fn log(msg: &str) {
+    // テストは、使っているアプリのログ（~/Library/Logs）に書かない
+    if cfg!(test) {
+        return;
+    }
     let path = format!("{}/Library/Logs/rootlore-desktop.log", std::env::var("HOME").unwrap_or_default());
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
         let _ = writeln!(f, "{}", msg);

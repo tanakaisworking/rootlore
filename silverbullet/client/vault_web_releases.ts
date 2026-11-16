@@ -9,9 +9,11 @@ export const releases: Release[] = [
     version: "0.0.12",
     date: "2026-11-17",
     ja: [
+      "GitHub でつないだとき、ノートの中身が取り込めず、探しても何も見つからなかった問題を直しました。",
       "ブラウザでログインを済ませたら、すぐにアプリが前に出て「ログインしています…」と出るようにしました。開くまでの間も、読み込み中だと分かる印を出します。",
     ],
     en: [
+      "Fixed notes not loading after connecting with GitHub, which left search with no results.",
       "After you sign in in the browser, the app comes to the front right away and shows that it is signing in. While it opens, a loading indicator shows it is still working.",
     ],
   },
