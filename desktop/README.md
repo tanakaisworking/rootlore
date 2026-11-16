@@ -55,3 +55,9 @@ On launch, the app links `~/.local/bin/rootlore` to the bundled CLI (`src-tauri/
 - It replaces a broken link only when it pointed at a bundled `rootlore-cli`, for example after the app moved.
 
 Deleting the app leaves the link broken. The standalone CLI still installs and works without the app.
+
+## Standalone CLI releases
+
+`rootlore update` (`cli/src/update.rs`) reads `cli-latest.json` from the main branch of `rootlore-releases`, downloads the file for the platform, and checks it with the app's updater public key before replacing itself. A CLI inside the app refuses and points to the app update.
+
+To release: bump `version` in `cli/Cargo.toml`, run `TAURI_SIGNING_PRIVATE_KEY=<key> scripts/release-cli.sh`, upload `dist-cli/rootlore-macos-aarch64` to a `cli-v<version>` release, then commit `dist-cli/cli-latest.json` to `rootlore-releases`. Upload the file before the manifest so no client sees a missing download.

@@ -68,6 +68,14 @@ The token is stored in the macOS Keychain, and the app sends your notes only to 
 
 The App requests read and write access to Contents for the repositories you install it on, and no others. Rootlore reads and writes only the one you open. You can remove the App from any repository in your GitHub settings. Sign-in and repository access are separate steps, so you can see exactly what you are granting.
 
+### On the command line
+
+The Mac app includes the `rootlore` command and links it to `~/.local/bin/rootlore` when nothing else is there. Updating the app updates the command.
+
+Without the app, download `rootlore-macos-aarch64` from a `cli-v*` [release](https://github.com/tanakaisworking/rootlore-releases/releases), save it as `~/.local/bin/rootlore`, and make it executable. `rootlore update` installs newer versions; it checks the signature before replacing itself.
+
+Run `rootlore login` to sign in through your browser, then `rootlore help` for the commands.
+
 ## Data and permissions
 
 - Rootlore does not store note bodies on its servers. Notes travel only between GitHub and your browser.
