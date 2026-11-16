@@ -23,7 +23,7 @@ npx wrangler dev --ip 127.0.0.1 --port 8790 \
 
 `DEV_GITHUB_TOKEN` works only on localhost. It skips the GitHub App sign-in and opens `DEV_GITHUB_REPO`.
 
-The desktop app: `npm run build`, then `cd desktop/src-tauri && cargo run`. Without a bundled `desktop/frontend/`, it serves the repository's `dist/`.
+The desktop app: `npm run build && npm run build:cli`, then `cd desktop/src-tauri && cargo run`. Without a bundled `desktop/frontend/`, it serves the repository's `dist/`. `build:cli` puts the CLI where the app bundles it.
 
 ## Before you send a change
 

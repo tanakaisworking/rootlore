@@ -2,6 +2,7 @@
 // ログインは、ふだんのブラウザで行い（そこで GitHub にログイン済みなら操作はほぼ要らない）、
 // 使い捨ての番号を rootlore:// のリンクでアプリに戻して、アプリの中のログイン状態にする（worker/auth.ts の /.auth/desktop）。
 // 番号だけ漏れても使えないよう、PKCE（verifier と challenge）を添える
+mod cli_link;
 mod local;
 mod mcp;
 mod menu;
@@ -98,6 +99,19 @@ pub(crate) fn log(msg: &str) {
 #[tauri::command]
 fn report(msg: String) {
     log(&msg);
+}
+
+/// 同梱した CLI を ~/.local/bin/rootlore に張る（cli_link.rs）。失敗してもアプリは止めない
+fn link_cli() {
+    let (Some(cli), Some(home)) = (cli_link::bundled_cli(), std::env::var_os("HOME")) else {
+        return;
+    };
+    let bin = std::path::PathBuf::from(home).join(".local/bin");
+    match cli_link::provision(&cli, &bin) {
+        Ok(cli_link::Outcome::Kept) => {}
+        Ok(outcome) => log(&format!("cli-link {outcome:?} {}", bin.join("rootlore").display())),
+        Err(e) => log(&format!("cli-link-failed {e}")),
+    }
 }
 
 fn random_state() -> String {
@@ -351,6 +365,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![report, mcp::mcp_result, menu::set_menu_state])
         .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()))
         .setup(|app| {
+            link_cli();
             menu::apply(app.handle(), "en", false).map_err(std::io::Error::other)?;
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {

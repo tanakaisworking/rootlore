@@ -6,4 +6,5 @@ dist/
 .DS_Store
 *.tsbuildinfo
 .local/
+desktop/src-tauri/binaries/
 CLAUDE.local.md

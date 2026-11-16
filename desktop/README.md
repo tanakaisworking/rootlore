@@ -43,3 +43,15 @@ npx tauri build --bundles app   # unsigned, for local use
 ```
 
 The app is about 35 MB (19 MB UI + 15 MB app). After changing the UI, users do not receive it until a new build ships.
+
+## Command-line tool
+
+The app carries the CLI (`cli/`) as `Contents/MacOS/rootlore-cli`. `npm run build:desktop` builds it into `src-tauri/binaries/`, which Tauri bundles through `externalBin`; `cargo run` needs that file too, so run `npm run build:cli` first.
+
+On launch, the app links `~/.local/bin/rootlore` to the bundled CLI (`src-tauri/src/cli_link.rs`), following the same rules as Hermes Desktop:
+
+- If nothing is there, it creates the link. Updating the app then updates the CLI too.
+- It never touches a regular file (a CLI installed on its own) or a link that still works.
+- It replaces a broken link only when it pointed at a bundled `rootlore-cli`, for example after the app moved.
+
+Deleting the app leaves the link broken. The standalone CLI still installs and works without the app.

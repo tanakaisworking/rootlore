@@ -9,7 +9,8 @@
     "typecheck": "tsc",
     "deploy": "npm run build && wrangler deploy",
     "test": "vitest run --dir worker",
-    "build:desktop": "npm run build && rsync -a --delete dist/ desktop/frontend/"
+    "build:cli": "cargo build --release --manifest-path cli/Cargo.toml && mkdir -p desktop/src-tauri/binaries && cp cli/target/release/rootlore desktop/src-tauri/binaries/rootlore-cli-$(rustc --print host-tuple)",
+    "build:desktop": "npm run build && npm run build:cli && rsync -a --delete dist/ desktop/frontend/"
   },
   "dependencies": {
     "hono": "^4.13.16"
