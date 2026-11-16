@@ -72,7 +72,15 @@ The App requests read and write access to Contents for the repositories you inst
 
 The Mac app includes the `rootlore` command and links it to `~/.local/bin/rootlore` when nothing else is there. Updating the app updates the command.
 
-Without the app, download `rootlore-macos-aarch64` from a `cli-v*` [release](https://github.com/tanakaisworking/rootlore-releases/releases), save it as `~/.local/bin/rootlore`, and make it executable. `rootlore update` installs newer versions; it checks the signature before replacing itself.
+Without the app, install the standalone command from the terminal. If the app's link is already there, skip this; the app keeps the command up to date.
+
+```sh
+mkdir -p ~/.local/bin
+curl -fL -o ~/.local/bin/rootlore https://github.com/tanakaisworking/rootlore-releases/releases/download/cli-v0.2.0/rootlore-macos-aarch64
+chmod +x ~/.local/bin/rootlore
+```
+
+Then run `rootlore update` to move to the newest version; it checks the signature before replacing itself. A file downloaded with a browser is quarantined by macOS, so use `curl` as above.
 
 Run `rootlore login` to sign in through your browser, then `rootlore help` for the commands.
 If your shell says `command not found`, add `~/.local/bin` to your PATH: `export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`.
