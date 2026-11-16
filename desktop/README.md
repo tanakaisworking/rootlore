@@ -8,7 +8,7 @@ The title bar uses the macOS transparent style and applies the sidebar backgroun
 
 ## Update distribution
 
-Eight seconds after launch, the app reads `latest.json` and asks whether to install a newer version. "Update" replaces the app and reopens it. You can also check from Help → Check for Updates.
+Eight seconds after launch, the app reads `latest.json` and asks whether to install a newer version. "Update" replaces the app and reopens it. You can also check from Rootlore → Check for Updates….
 
 - Manifest: `https://raw.githubusercontent.com/tanakaisworking/rootlore-releases/main/latest.json`
 - Releases: `tanakaisworking/rootlore-releases`.

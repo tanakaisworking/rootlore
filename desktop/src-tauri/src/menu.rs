@@ -15,6 +15,7 @@ fn build(app: &AppHandle, language: &str, can_save: bool) -> tauri::Result<(Menu
     let settings = item("settings", t("設定…", "Settings…"), Some("CmdOrCtrl+,"))?;
     let app_menu = SubmenuBuilder::new(app, "Rootlore")
         .about_with_text(t("Rootloreについて", "About Rootlore"), Some(AboutMetadata { name: Some("Rootlore".into()), version: Some(env!("CARGO_PKG_VERSION").into()), ..Default::default() }))
+        .text("check_update", t("アップデートを確認…", "Check for Updates…"))
         .separator().item(&settings).separator()
         .services_with_text(t("サービス", "Services")).separator()
         .hide_with_text(t("Rootloreを隠す", "Hide Rootlore"))
@@ -43,8 +44,7 @@ fn build(app: &AppHandle, language: &str, can_save: bool) -> tauri::Result<(Menu
         .minimize_with_text(t("しまう", "Minimize")).maximize_with_text(t("拡大／縮小", "Zoom"))
         .separator().bring_all_to_front_with_text(t("すべてを手前に移動", "Bring All to Front")).build()?;
     let help = SubmenuBuilder::with_id(app, HELP_SUBMENU_ID, t("ヘルプ", "Help"))
-        .text("shortcuts", t("キーボードショートカット", "Keyboard Shortcuts"))
-        .separator().text("check_update", t("アップデートを確認…", "Check for Updates…")).build()?;
+        .text("shortcuts", t("キーボードショートカット", "Keyboard Shortcuts")).build()?;
     let menu = MenuBuilder::new(app).items(&[&app_menu, &file, &edit, &view, &window, &help]).build()?;
     Ok((menu, save))
 }
