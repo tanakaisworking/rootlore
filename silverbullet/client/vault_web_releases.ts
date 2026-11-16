@@ -11,10 +11,12 @@ export const releases: Release[] = [
     ja: [
       "GitHub でログインしてアプリに戻ったとき、アプリが落ちてつながらなかった問題を直しました。",
       "アプリの中で思わぬ失敗が起きても、アプリごと落ちずに、その操作だけを止めて続けるようにしました。",
+      "アプリの中で受け止めた失敗も、設定の「エラーの報告」がオンのときは、直すために送るようにしました（ノートの中身やファイル名は送りません）。",
     ],
     en: [
       "Fixed a crash right after signing in with GitHub, which left the app unconnected.",
       "If something unexpected fails inside the app, only that action stops; the app keeps running.",
+      "Failures the app catches are now reported too when Error reports is on in Settings (never note contents or file names).",
     ],
   },
   {
