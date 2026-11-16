@@ -17,9 +17,13 @@ pub enum Outcome {
     Kept,
 }
 
-/// 同梱した CLI の場所。.app の中から起動したときだけ返す（cargo run では張らない）
+/// 同梱した CLI の場所。.app の中から起動したときだけ返す（cargo run では張らない）。
+/// ダウンロードしたまま開いたとき（App Translocation の一時的な場所）も張らない。終了すると消える場所なので
 pub fn bundled_cli() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
+    if exe.to_string_lossy().contains("/AppTranslocation/") {
+        return None;
+    }
     let dir = exe.parent()?;
     if !dir.ends_with("Contents/MacOS") {
         return None;

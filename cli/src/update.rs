@@ -38,6 +38,7 @@ pub fn run() -> Result<(), String> {
         .timeout(Duration::from_secs(120))
         .user_agent(concat!("rootlore-cli/", env!("CARGO_PKG_VERSION")))
         .build();
+    // 配布情報の場所を差し替える（配布前の確認用）。中身は同じ鍵の署名で確かめるので、差し替えても署名のないものは入らない
     let manifest_url = std::env::var("ROOTLORE_UPDATE_MANIFEST").unwrap_or_else(|_| MANIFEST.into());
     let manifest: Manifest = agent
         .get(&manifest_url)
@@ -51,6 +52,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
     let platform = format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH);
+    let file = format!("rootlore-{platform}");
     let asset = manifest
         .platforms
         .get(&platform)
@@ -64,8 +66,8 @@ pub fn run() -> Result<(), String> {
         .take(MAX_SIZE)
         .read_to_end(&mut data)
         .map_err(|e| format!("新しい版を取ってこられません: {e}"))?;
-    verify(PUBKEY, &data, &asset.signature)?;
-    replace(&exe, &data)?;
+    verify(PUBKEY, &data, &asset.signature, &file)?;
+    replace(&exe, &data, &manifest.version)?;
     println!("{current} から {} に更新しました。", manifest.version);
     Ok(())
 }
@@ -82,24 +84,41 @@ fn newer(latest: &str, current: &str) -> Result<bool, String> {
     Ok(version(latest)? > version(current)?)
 }
 
-/// 鍵も署名も、tauri signer が出す形（minisign の文面を base64 にしたもの）
-fn verify(pubkey: &str, data: &[u8], signature: &str) -> Result<(), String> {
+/// 鍵も署名も、tauri signer が出す形（minisign の文面を base64 にしたもの）。
+/// 署名に含まれるファイル名（trusted comment の file:）も確かめ、同じ鍵で署名したアプリの更新ファイルなどを取り違えて入れない
+fn verify(pubkey: &str, data: &[u8], signature: &str, file: &str) -> Result<(), String> {
     let text = |b64: &str| STANDARD.decode(b64.trim()).ok().and_then(|b| String::from_utf8(b).ok());
     let key = text(pubkey).and_then(|t| PublicKey::decode(&t).ok()).ok_or("公開鍵が読めません")?;
     let sig = text(signature).and_then(|t| Signature::decode(&t).ok()).ok_or("署名が読めません")?;
-    key.verify(data, &sig, true).map_err(|_| "署名が合いません。入れ替えをやめました。".to_string())
+    key.verify(data, &sig, true).map_err(|_| "署名が合いません。入れ替えをやめました。".to_string())?;
+    let expected = format!("file:{file}");
+    if !sig.trusted_comment().split('\t').any(|part| part == expected) {
+        return Err("署名したファイルの名前が合いません。入れ替えをやめました。".into());
+    }
+    Ok(())
 }
 
-/// 同じフォルダに書いてから置き換える。途中で失敗しても、今の rootlore は残る
-fn replace(exe: &Path, data: &[u8]) -> Result<(), String> {
+/// 同じフォルダに書き、取ってきた版が配布情報の版を名乗るか確かめてから置き換える
+/// （配布情報だけ書き換えて、署名済みの古い版に戻させない）。途中で失敗しても、今の rootlore は残る
+fn replace(exe: &Path, data: &[u8], version: &str) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
     let staged = exe.with_file_name(format!(".rootlore-update-{}", std::process::id()));
     let result = fs::write(&staged, data)
         .and_then(|_| fs::set_permissions(&staged, fs::Permissions::from_mode(0o755)))
-        .and_then(|_| fs::rename(&staged, exe));
+        .map_err(|e| format!("{} を入れ替えられません: {e}", exe.display()))
+        .and_then(|_| {
+            let out = std::process::Command::new(&staged).arg("--version").output().map_err(|e| format!("新しい版を起動できません: {e}"))?;
+            let named = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if named == format!("rootlore {version}") {
+                Ok(())
+            } else {
+                Err(format!("新しい版が {version} ではありません（{named}）。入れ替えをやめました。"))
+            }
+        })
+        .and_then(|_| fs::rename(&staged, exe).map_err(|e| format!("{} を入れ替えられません: {e}", exe.display())));
     if let Err(e) = result {
         let _ = fs::remove_file(&staged);
-        return Err(format!("{} を入れ替えられません: {e}", exe.display()));
+        return Err(e);
     }
     Ok(())
 }
@@ -129,8 +148,10 @@ mod tests {
 
     #[test]
     fn accepts_only_signed_data() {
-        assert!(verify(TEST_PUBKEY, b"rootlore test\n", TEST_SIGNATURE).is_ok());
-        assert!(verify(TEST_PUBKEY, b"rootlore test!\n", TEST_SIGNATURE).is_err());
-        assert!(verify(PUBKEY, b"rootlore test\n", TEST_SIGNATURE).is_err());
+        assert!(verify(TEST_PUBKEY, b"rootlore test\n", TEST_SIGNATURE, "data").is_ok());
+        assert!(verify(TEST_PUBKEY, b"rootlore test!\n", TEST_SIGNATURE, "data").is_err());
+        assert!(verify(PUBKEY, b"rootlore test\n", TEST_SIGNATURE, "data").is_err());
+        // 署名は正しくても、別の名前で署名したファイルは入れない
+        assert!(verify(TEST_PUBKEY, b"rootlore test\n", TEST_SIGNATURE, "rootlore-macos-aarch64").is_err());
     }
 }

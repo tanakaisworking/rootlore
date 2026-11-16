@@ -75,6 +75,7 @@ The Mac app includes the `rootlore` command and links it to `~/.local/bin/rootlo
 Without the app, download `rootlore-macos-aarch64` from a `cli-v*` [release](https://github.com/tanakaisworking/rootlore-releases/releases), save it as `~/.local/bin/rootlore`, and make it executable. `rootlore update` installs newer versions; it checks the signature before replacing itself.
 
 Run `rootlore login` to sign in through your browser, then `rootlore help` for the commands.
+If your shell says `command not found`, add `~/.local/bin` to your PATH: `export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`.
 
 ## Data and permissions
 
