@@ -11,7 +11,8 @@ The title bar uses the macOS transparent style and applies the sidebar backgroun
 Eight seconds after launch, the app reads `latest.json` and asks whether to install a newer version. "Update" replaces the app and reopens it. You can also check from Rootlore → Check for Updates….
 
 - Manifest: `https://raw.githubusercontent.com/tanakaisworking/rootlore-releases/main/latest.json`
-- Releases: `tanakaisworking/rootlore-releases`.
+- Release files: the `v<version>` releases of `tanakaisworking/rootlore`. `rootlore-releases` holds only the update manifests (`latest.json`, `cli-latest.json`); installed apps read them there, so they stay in that repository. Releases up to 0.0.8 also remain in `rootlore-releases`.
+- To release the app: upload `Rootlore.app.tar.gz` and `Rootlore.app.tar.gz.sig` to a `v<version>` release of `tanakaisworking/rootlore`, then commit `latest.json` (with that release's download URL and the signature) to `rootlore-releases`. Upload the files before the manifest so no client sees a missing download.
 - Update archives are signed with the updater key. The public key is in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`, so the app installs only builds signed by the matching private key.
 
 ## How the app carries the UI
@@ -60,4 +61,4 @@ Deleting the app leaves the link broken. The standalone CLI still installs and w
 
 `rootlore update` (`cli/src/update.rs`) reads `cli-latest.json` from the main branch of `rootlore-releases`, downloads the file for the platform, and checks it with the app's updater public key before replacing itself. A CLI inside the app refuses and points to the app update.
 
-To release: bump `version` in `cli/Cargo.toml`, run `TAURI_SIGNING_PRIVATE_KEY=<key> scripts/release-cli.sh`, upload `dist-cli/rootlore-macos-aarch64` to a `cli-v<version>` release, then commit `dist-cli/cli-latest.json` to `rootlore-releases`. Upload the file before the manifest so no client sees a missing download.
+To release: bump `version` in `cli/Cargo.toml`, run `TAURI_SIGNING_PRIVATE_KEY=<key> scripts/release-cli.sh`, upload `dist-cli/rootlore-macos-aarch64` and its `.sig` to a `cli-v<version>` release of `tanakaisworking/rootlore` (mark it not latest, so the app stays the latest release), then commit `dist-cli/cli-latest.json` to `rootlore-releases`. Upload the file before the manifest so no client sees a missing download.

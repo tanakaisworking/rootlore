@@ -8,7 +8,7 @@
 <p align="center"><strong>Your knowledge. Rooted in Git.</strong><br>Read, search, and edit the Markdown notes in your GitHub repository.</p>
 
 <p align="center">
-  <a href="https://github.com/tanakaisworking/rootlore-releases/releases/latest"><strong>Download for macOS</strong></a> ·
+  <a href="https://github.com/tanakaisworking/rootlore/releases/latest"><strong>Download for macOS</strong></a> ·
   <a href="https://rootlore.app/v/">Open the web app (beta)</a> ·
   <a href="https://github.com/tanakaisworking/rootlore/issues/new">Send feedback</a>
 </p>
@@ -54,7 +54,7 @@ The home screen reads your Git history: a year of contributions, how each folder
 
 ### On your Mac (recommended)
 
-1. Download Rootlore from the [latest release](https://github.com/tanakaisworking/rootlore-releases/releases/latest) and move it to Applications.
+1. Download Rootlore from the [latest release](https://github.com/tanakaisworking/rootlore/releases/latest) and move it to Applications.
 2. On GitHub, create a fine-grained token: Settings → Developer settings → Personal access tokens → Fine-grained tokens. Under Repository access, choose "Only select repositories" and pick your notes repository. Under Repository permissions, set Contents to "Read and write".
 3. Open Rootlore, paste the token under "Use a token", and enter the repository as `owner/repo`.
 
@@ -76,7 +76,7 @@ Without the app, install the standalone command from the terminal. If the app's 
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fL -o ~/.local/bin/rootlore https://github.com/tanakaisworking/rootlore-releases/releases/download/cli-v0.2.0/rootlore-macos-aarch64
+curl -fL -o ~/.local/bin/rootlore https://github.com/tanakaisworking/rootlore/releases/download/cli-v0.2.0/rootlore-macos-aarch64
 chmod +x ~/.local/bin/rootlore
 ```
 
