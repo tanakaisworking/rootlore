@@ -1,6 +1,6 @@
 [package]
 name = "rootlore"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Rootlore の CLI。GitHub が正本の Vault を、探す前に取り込んで、読む・探す・書く"
 
