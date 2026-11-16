@@ -6,6 +6,16 @@ export type Release = { version: string; date: string; ja: string[]; en: string[
 
 export const releases: Release[] = [
   {
+    version: "0.0.13",
+    date: "2026-11-17",
+    ja: [
+      "ノートの名前の横に「パスをコピー」を付けました。AI に「このノートのこと」と伝えるときに、vault の中の場所（フォルダは フォルダ名/）をそのまま貼れます。",
+    ],
+    en: [
+      "Added Copy path next to the note title. Paste the note's place in your vault (a folder ends with /) to tell an AI which note you mean.",
+    ],
+  },
+  {
     version: "0.0.12",
     date: "2026-11-17",
     ja: [

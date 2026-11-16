@@ -14,6 +14,8 @@ import type { Client } from "./client.ts";
 import { canEditNote, editNoteCommand, historyUrlFor, noteHistoryCommand } from "./vault_web_edit.ts";
 import { VaultWebNoteEditor } from "./components/vault_web_note_editor.tsx";
 import { t } from "./vault_web_i18n.ts";
+import { copyablePath } from "./vault_web_copy_path.ts";
+import { copyToClipboard } from "./clipboard.ts";
 import {
   type ConfiguredActionButton,
   visibleActionButtons,
@@ -40,6 +42,7 @@ import {
 } from "./components/vault_web_sidebar_rail.tsx";
 import {
   VaultWebPageView,
+  vaultWebPageFor,
   vaultWebTitleFor,
   vaultWebTopBarName,
 } from "./components/vault_web_dialogs.tsx";
@@ -671,6 +674,22 @@ export class MainUI {
               }),
           ]}
           extraActions={<VaultWebNoteEditor client={client} />}
+          onCopyPath={(() => {
+            // vault-web: AI などに場所を伝えるための「パスをコピー」（vault_web_copy_path.ts）
+            const path = copyablePath(viewState.current?.path, {
+              appPage: !!vaultWebPageFor(viewState.current?.path),
+              homeShown: client.contentManager?.vaultWebHomeShown,
+              folderShown: client.contentManager?.vaultWebFolderShown,
+              missingShown: client.contentManager?.missingPageShown,
+            });
+            if (!path) return undefined;
+            return () => {
+              copyToClipboard(path).then(
+                () => client.ui.flashNotification(t(`パスをコピーしました: ${path}`, `Copied path: ${path}`)),
+                () => client.ui.flashNotification(t("パスをコピーできませんでした。", "Couldn't copy the path."), "error"),
+              );
+            };
+          })()}
           rhs={sidebarSpacer("rhs")}
           lhs={sidebarSpacer("lhs") || (showLeftRail && <SidebarRailSpacer />)}
           // vault-web: スマートフォンの「☰」は、閉じたあとも左のサイドバーを開けるようにする

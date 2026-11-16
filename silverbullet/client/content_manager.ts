@@ -386,6 +386,9 @@ export class ContentManager {
   /** vault-web: GitHub から作ったホームを出しているページ名。画面は vault_web_home_view.tsx が描く */
   vaultWebHomeShown?: string;
 
+  /** vault-web: 中身の一覧を出しているフォルダの名前（上部のバーの「パスをコピー」が フォルダ/ を写す。vault_web_copy_path.ts） */
+  vaultWebFolderShown?: string;
+
   async reloadEditor() {
     if (!this.client.systemReady) return;
 
@@ -544,6 +547,7 @@ export class ContentManager {
       await this.leaveCurrentPage(path);
     const pageName = getNameFromPath(path);
     this.vaultWebHomeShown = undefined;
+    this.vaultWebFolderShown = undefined;
 
     let doc;
     let markerIndex = -1;
@@ -616,6 +620,7 @@ export class ContentManager {
         // vault-web: フォルダを開いたときは、中身の一覧（vault_web_folder.ts）
         doc.text = folderPage;
         doc.meta.perm = "ro";
+        this.vaultWebFolderShown = pageName;
       } else if (results.length === 0 && this.client.bootConfig.readOnly) {
         // vault-web: 日本語にする。起動直後はホームなどの virtual page がまだ定義されていないので、
         // スクリプトを読み終えたら開き直す（client.ts の maybeDispatchWidgetsReady）

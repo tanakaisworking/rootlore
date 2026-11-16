@@ -297,6 +297,30 @@ html[data-theme="dark"] {
   }
 }
 
+// タイトルの横の「パスをコピー」（components/top_bar.tsx）。目立たせず、乗せたときだけ濃くする
+#sb-top .vw-copy-path {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--top-color, currentColor);
+  opacity: 0.55;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    background: var(--action-button-hover-background-color, rgba(127, 127, 127, 0.15));
+  }
+}
+
 #sb-main .vw-sidebar-actions {
   display: flex;
   align-items: center;

@@ -3,7 +3,7 @@ import { Icon, Input } from "@silverbulletmd/silverbullet/ui";
 import type { ComponentChildren, FunctionalComponent } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { Menu, Sidebar } from "preact-feather";
+import { Copy, Menu, Sidebar } from "preact-feather";
 import { resolveIconNode } from "../lib/icon.ts";
 import { t } from "../vault_web_i18n.ts";
 
@@ -306,6 +306,7 @@ export function TopBar({
   onDismissNotification,
   actionButtons,
   extraActions,
+  onCopyPath,
   progressPercentage,
   progressType,
   progressWithLabel,
@@ -331,6 +332,8 @@ export function TopBar({
   onDismissNotification: (id: number) => void;
   actionButtons: ActionButton[];
   extraActions?: ComponentChildren;
+  /** vault-web: 「パスをコピー」。vault のファイルではないページでは渡さない（vault_web_copy_path.ts） */
+  onCopyPath?: () => void;
   lhs?: ComponentChildren;
   rhs?: ComponentChildren;
   pageNamePrefix?: string;
@@ -361,6 +364,17 @@ export function TopBar({
             >
               <PageTitle pageName={pageName} />
             </span>
+            {onCopyPath && (
+              <button
+                type="button"
+                className="vw-copy-path"
+                title={t("パスをコピー", "Copy path")}
+                aria-label={t("パスをコピー", "Copy path")}
+                onClick={onCopyPath}
+              >
+                <Copy size={15} aria-hidden="true" />
+              </button>
+            )}
             <NotificationPanel
               notifications={notifications}
               onDismiss={onDismissNotification}
