@@ -3052,7 +3052,7 @@ dependencies = [
 
 [[package]]
 name = "rootlore-desktop"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "base64 0.22.1",
  "keyring",
