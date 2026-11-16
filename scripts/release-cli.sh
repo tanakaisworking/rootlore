@@ -1,7 +1,7 @@
 #!/bin/sh
 # CLI を配る準備: ビルドして、アプリの更新と同じ鍵で署名し、cli-latest.json を作る。
 # 署名の鍵は TAURI_SIGNING_PRIVATE_KEY（と TAURI_SIGNING_PRIVATE_KEY_PASSWORD）で渡す。
-# 出来上がった dist-cli/ の中身を、rootlore の cli-v<版> のリリースと、rootlore-releases の main の cli-latest.json に載せる。
+# 出来上がった dist-cli/ の中身を rootlore の cli-v<版> のリリースに載せ、cli-latest.json を最新のアプリのリリースに添付し直す（--clobber）。
 set -eu
 cd "$(dirname "$0")/.."
 version=$(sed -n 's/^version = "\(.*\)"$/\1/p' cli/Cargo.toml | head -1)

@@ -12,7 +12,8 @@ use base64::Engine;
 use minisign_verify::{PublicKey, Signature};
 use serde::Deserialize;
 
-const MANIFEST: &str = "https://raw.githubusercontent.com/tanakaisworking/rootlore-releases/main/cli-latest.json";
+/// 最新のアプリのリリースに添付した cli-latest.json（desktop/README.md の「Standalone CLI releases」）
+const MANIFEST: &str = "https://github.com/tanakaisworking/rootlore/releases/latest/download/cli-latest.json";
 /// アプリの更新と同じ公開鍵。対になる秘密鍵で署名したものだけを入れる
 const PUBKEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDA3RjNGMEJGQzNDOTMxMkQKUldRdE1jbkR2L0R6QjBNdG1oREhoTTN1WlJWcm9DMVZVMzlaSkpEeDVlQ0RjRUlwQUhwaFhTN0oK";
 const MAX_SIZE: u64 = 64 << 20;
