@@ -18,6 +18,7 @@ export function appPaths(prefix: string) {
     fsAll: `${prefix}/.fs/*`,
     commit: `${prefix}/api/gh/commit`,
     move: `${prefix}/api/gh/move`,
+    delete: `${prefix}/api/gh/delete`,
     feedback: `${prefix}/api/feedback`,
     errors: `${prefix}/api/errors`,
     gh: `${prefix}/api/gh/*`,

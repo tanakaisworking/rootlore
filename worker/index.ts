@@ -11,6 +11,7 @@ import { adminPage, isAdmin, listFeedback } from "./admin";
 import { handleErrors, reportWorkerError } from "./errors";
 import { handleFeedback } from "./feedback";
 import { handleMove } from "./move";
+import { handleDelete } from "./delete";
 import type { Env } from "./env";
 import { messageFor, messages, pageCsp, pageLang } from "./pages";
 import { APP_PREFIX, appPaths } from "./paths";
@@ -117,6 +118,15 @@ function mount(prefix: string) {
     if (otherRepo(c, access.repo)) return c.json({ error: "repo" }, 412, { "Cache-Control": "no-store" });
     const { owner, repo, branch } = access.repo;
     return handleMove(c.req.raw, access.token, { owner, repo }, branch);
+  });
+
+  // ノートの削除（worker/delete.ts）。読んだときの版から変わっていれば消さない
+  app.all(paths.delete, async (c) => {
+    const access = await repoAccess(c);
+    if ("error" in access) return c.json({ error: access.error }, 401, { "Cache-Control": "no-store" });
+    if (otherRepo(c, access.repo)) return c.json({ error: "repo" }, 412, { "Cache-Control": "no-store" });
+    const { owner, repo, branch } = access.repo;
+    return handleDelete(c.req.raw, access.token, { owner, repo }, branch);
   });
 
   // 要望のフォーム（worker/feedback.ts）。GitHub には送らず、KV に置く

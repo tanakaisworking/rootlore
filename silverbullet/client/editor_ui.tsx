@@ -12,6 +12,7 @@ import { useEffect, useMemo, useReducer, useState } from "preact/hooks";
 import * as featherIcons from "preact-feather";
 import type { Client } from "./client.ts";
 import { canEditNote, editNoteCommand, historyUrlFor, noteHistoryCommand } from "./vault_web_edit.ts";
+import { deleteNoteCommand } from "./vault_web_delete.ts";
 import { VaultWebNoteEditor } from "./components/vault_web_note_editor.tsx";
 import { t } from "./vault_web_i18n.ts";
 import { copyablePath } from "./vault_web_copy_path.ts";
@@ -582,8 +583,8 @@ export class MainUI {
             })
               .filter(
                 (button) =>
-                  button.command === noteHistoryCommand
-                    ? // 履歴は GitHub にあるノートだけ（下書きだけのノートには、まだ履歴がない）
+                  button.command === noteHistoryCommand || button.command === deleteNoteCommand
+                    ? // 履歴と削除は GitHub にあるノートだけ（下書きだけのノートには、まだ履歴も消すものもない）
                       !!client.bootConfig.githubRepo &&
                       !!viewState.current &&
                       !!historyUrlFor(
@@ -617,7 +618,9 @@ export class MainUI {
                     ? t("編集", "Edit")
                     : button.command === noteHistoryCommand
                       ? t("履歴（GitHub）", "History (GitHub)")
-                      : button.description || "";
+                      : button.command === deleteNoteCommand
+                        ? t("削除", "Delete")
+                        : button.description || "";
                 if (button.command) {
                   const cmd = viewState.commands.get(button.command);
                   if (cmd) {

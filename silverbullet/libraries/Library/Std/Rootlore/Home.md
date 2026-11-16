@@ -24,6 +24,13 @@ table.insert(config.get("actionButtons", {}), {
   dropdown = false,
 })
 table.insert(config.get("actionButtons", {}), {
+  icon = "trash-2",
+  description = "削除",
+  command = "Vault: Delete note",
+  priority = 4.45,
+  dropdown = false,
+})
+table.insert(config.get("actionButtons", {}), {
   icon = "refresh-cw",
   description = "最新の状態に更新",
   command = "Sync: Space",

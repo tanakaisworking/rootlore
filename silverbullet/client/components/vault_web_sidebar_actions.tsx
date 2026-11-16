@@ -9,6 +9,7 @@ import { resolveButtonIcon } from "../lib/feather_icons.ts";
 import { keyboardHint } from "../../plug-api/lib/shortcut.ts";
 import { t } from "../vault_web_i18n.ts";
 import { editNoteCommand, noteHistoryCommand } from "../vault_web_edit.ts";
+import { deleteNoteCommand } from "../vault_web_delete.ts";
 
 type SidebarAction = {
   key: string;
@@ -47,12 +48,13 @@ export function sidebarActions(client: Client): SidebarAction[] {
     accountManaged: !!client.bootConfig.accountManaged,
   })
     // アカウントは下のボタン。コマンドパレットは vault-web では使わない（⌘/ も外した。editor_commands.ts）。
-    // 「編集」と「履歴」は上部のバーの右端（editor_ui.tsx）
+    // 「編集」「削除」「履歴」は上部のバーの右端（editor_ui.tsx）
     .filter(
       (button) =>
         button.icon !== "profile" &&
         button.command !== hiddenCommand &&
         button.command !== editNoteCommand &&
+        button.command !== deleteNoteCommand &&
         button.command !== noteHistoryCommand,
     )
     .map((button, index) => {

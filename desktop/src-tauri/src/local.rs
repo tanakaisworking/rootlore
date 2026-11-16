@@ -47,7 +47,7 @@ pub fn allowed_api(method: &Method, path: &str, repo: Option<&(String, String, S
     // path は /v/api/gh/... か /api/gh/...
     let Some(rest) = strip_gh(path) else { return false };
     if *method == Method::Post {
-        return rest == "/graphql" || rest == "/commit" || rest == "/move";
+        return rest == "/graphql" || rest == "/commit" || rest == "/move" || rest == "/delete";
     }
     if *method != Method::Get {
         return false;
@@ -698,7 +698,7 @@ mod tests {
         ] {
             assert!(allowed_api(&get, path, repo), "should allow GET {path}");
         }
-        for path in ["/api/gh/graphql", "/api/gh/commit", "/api/gh/move"] {
+        for path in ["/api/gh/graphql", "/api/gh/commit", "/api/gh/move", "/api/gh/delete"] {
             assert!(allowed_api(&post, path, repo), "should allow POST {path}");
         }
         // 断る
