@@ -6,6 +6,16 @@ export type Release = { version: string; date: string; ja: string[]; en: string[
 
 export const releases: Release[] = [
   {
+    version: "0.0.12",
+    date: "2026-11-17",
+    ja: [
+      "ブラウザでログインを済ませたら、すぐにアプリが前に出て「ログインしています…」と出るようにしました。開くまでの間も、読み込み中だと分かる印を出します。",
+    ],
+    en: [
+      "After you sign in in the browser, the app comes to the front right away and shows that it is signing in. While it opens, a loading indicator shows it is still working.",
+    ],
+  },
+  {
     version: "0.0.11",
     date: "2026-11-17",
     ja: [

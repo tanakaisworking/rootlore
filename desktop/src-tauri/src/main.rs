@@ -172,12 +172,38 @@ fn start_browser_login(app: &tauri::AppHandle) {
     // 窓には、ブラウザでログインするよう案内を出す
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        if let Some(w) = handle.get_webview_window("main") {
-            let _ = w.eval(
-                "document.title='Rootlore';document.body.innerHTML='<div style=\"font:16px -apple-system,sans-serif;padding:48px;text-align:center;color:#555\"><p>ブラウザでログインしてください。</p><p style=\"font-size:13px\">ログインが済むと、このアプリに戻ります。</p></div>';",
-            );
-        }
+        show_status(
+            &handle,
+            ("ブラウザでログインしてください。", "ログインが済むと、このアプリに戻ります。"),
+            ("Sign in in your browser.", "When you finish, you'll come back to this app."),
+            false,
+        );
     });
+}
+
+/// 窓に、いまの状態を1枚の案内で出す（ログインの途中など、画面がまだ無いとき）。言語はメニューと同じ
+fn show_status(app: &tauri::AppHandle, ja: (&str, &str), en: (&str, &str), busy: bool) {
+    let Some(w) = app.get_webview_window("main") else { return };
+    let (title, note) = if menu::language(app) == "ja" { ja } else { en };
+    // 待っている間は、止まっていないと分かるように回る印を出す
+    let spinner = if busy {
+        "<span style=\"display:inline-block;width:18px;height:18px;margin-bottom:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:vw-spin .8s linear infinite\"></span><style>@keyframes vw-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){span{animation:none!important}}</style>"
+    } else {
+        ""
+    };
+    let html = format!(
+        "<div role=\"status\" style=\"font:16px -apple-system,sans-serif;padding:48px;text-align:center;color:#777\">{spinner}<p>{}</p><p style=\"font-size:13px\">{}</p></div>",
+        html_text(title),
+        html_text(note)
+    );
+    let _ = w.eval(&format!(
+        "document.title='Rootlore';document.body.innerHTML={};",
+        serde_json::to_string(&html).unwrap_or_default()
+    ));
+}
+
+fn html_text(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 /// rootlore://auth?code=…&state=… でアプリに戻ってきたとき。
@@ -289,11 +315,12 @@ fn server_repo(agent: &ureq::Agent, cookie: &str) -> Option<(String, String, Str
 }
 
 fn show_login_failed(app: &tauri::AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.eval(
-            "document.body.innerHTML='<div style=\"font:16px -apple-system,sans-serif;padding:48px;text-align:center;color:#555\"><p>ログインできませんでした。</p><p style=\"font-size:13px\">アプリを開き直して、もう一度お試しください。</p></div>';",
-        );
-    }
+    show_status(
+        app,
+        ("ログインできませんでした。", "アプリを開き直して、もう一度お試しください。"),
+        ("Couldn't sign in.", "Reopen the app and try again."),
+        false,
+    );
 }
 
 /// 同梱した画面（dist/）の場所。開発中はリポジトリの dist/ を使う
@@ -379,6 +406,20 @@ fn main() {
                 // ログインの戻り。通信を含むので、画面のスレッドでは動かさない（OS から呼ばれる所で止まると、アプリごと落ちる）
                 for url in event.urls() {
                     let handle = handle.clone();
+                    // 承認したらすぐアプリを前に出し、待っている間も動いていると分かるようにする（以前は固まって見えた）
+                    if url.scheme() == "rootlore" && url.host_str() == Some("auth") {
+                        guard::run("deep-link-status", || {
+                            if let Some(w) = handle.get_webview_window("main") {
+                                let _ = w.set_focus();
+                            }
+                            show_status(
+                                &handle,
+                                ("ログインしています…", "ノートを開く準備をしています。"),
+                                ("Signing in…", "Getting your notes ready."),
+                                true,
+                            );
+                        });
+                    }
                     guard::spawn("deep-link", move || {
                         if guard::run("deep-link-login", || handle_deep_link(&handle, &url)).is_none() {
                             show_login_failed(&handle);

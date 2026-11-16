@@ -27,6 +27,23 @@ await cp(join(bundle, "base_fs"), join(dist, "_base_fs"), { recursive: true });
 
 // index.html は SilverBullet のサーバーが minijinja で埋めるテンプレート。ここで固定の値を入れる
 const template = await readFile(join(bundle, "client/.client/index.html"), "utf8");
+// 起動中の印。画面（Preact）が描かれると #sb-root ごと消える（client/editor_ui.tsx の render）。
+// ログイン直後の最初の読み込みなど、開くまで数秒かかるときに固まって見えないようにする。
+// すぐ開くときにちらつかないよう、0.4秒たってから出す。言語は画面と同じ決め方（vault_web_i18n.ts）
+const bootIndicator = [
+  '<div class="vw-boot" role="status"><span class="vw-boot-spinner" aria-hidden="true"></span><span class="vw-boot-text">Loading…</span></div>',
+  "<style>",
+  ".vw-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;",
+  'font:14px -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;color:#777;opacity:0;animation:vw-boot-in .2s .4s forwards}',
+  ".vw-boot-spinner{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:vw-boot-spin .8s linear infinite}",
+  "@keyframes vw-boot-spin{to{transform:rotate(360deg)}}@keyframes vw-boot-in{to{opacity:1}}",
+  "@media (prefers-reduced-motion:reduce){.vw-boot-spinner{animation:none}}",
+  "@media (prefers-color-scheme:dark){html{background:#262626}.vw-boot{color:#aaa}}",
+  "</style>",
+  '<script>(()=>{let s;try{s=localStorage.getItem("vw-language")}catch{}',
+  'const ja=s==="ja"||(s!=="en"&&(navigator.language||"").toLowerCase().startsWith("ja"));',
+  'const e=document.querySelector(".vw-boot-text");if(ja&&e)e.textContent="読み込んでいます…"})()</script>',
+].join("");
 const values = {
   // 画面は /v/ の下に置く（LP は根に別の Worker がある）。<base href> と、画面の中の相対パスがこれで決まる
   host_prefix: "/v",
@@ -35,7 +52,7 @@ const values = {
   description: "GitHubのMarkdownノートを、ブラウザだけで読んで直せるアプリ。",
   // リンクを貼ったときの絵（1200x630）。SNSのカードで使う
   image: "https://rootlore.app/v/.client/og-image.png",
-  content: "",
+  content: bootIndicator,
   additional_head_html: "",
 };
 const html = template
