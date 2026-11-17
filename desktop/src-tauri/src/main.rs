@@ -469,6 +469,9 @@ fn main() {
                 .initialization_script(&reset_script)
                 .initialization_script(PROBE)
                 .initialization_script(include_str!("mcp.js"))
+                // ドラッグは画面（WebKit）に渡す。Tauri の受け取り処理が有効だと、ドラッグを先に取って画面に渡さず、
+                // 左のファイル一覧でのドラッグによる移動が効かなかった（wry の wkwebview/drag_drop.rs）。アプリでは使っていない
+                .disable_drag_drop_handler()
                 // うちのサーバーのログイン画面へ移る動きだけ、ブラウザでのログインに置き換える
                 .on_navigation(move |url| {
                     guard::run("navigation", || {
