@@ -30,24 +30,27 @@ export async function requestDelete(apiBase: string, path: string, baseSha: stri
 
 export function registerVaultDeleteCommand(client: Client, hook: CommandHook) {
   if (!client.bootConfig.githubRepo) return;
-  let deleting = false;
   hook.registerCommand({
     name: deleteNoteCommand,
-    run: async () => {
-      if (deleting) return;
-      deleting = true;
-      try {
-        await deleteCurrentNote(client);
-      } finally {
-        deleting = false;
-      }
-    },
+    run: () => deleteVaultFile(client, client.currentPath()),
   });
 }
 
-async function deleteCurrentNote(client: Client): Promise<void> {
+let deleting = false;
+
+/** ファイルを確認してから削除する。開いているノートでも、サイドバーで右クリックしたファイルでもよい */
+export async function deleteVaultFile(client: Client, path: string | undefined): Promise<void> {
+  if (deleting) return;
+  deleting = true;
+  try {
+    await deleteFile(client, path);
+  } finally {
+    deleting = false;
+  }
+}
+
+async function deleteFile(client: Client, path: string | undefined): Promise<void> {
   const repo = client.bootConfig.githubRepo;
-  const path = client.currentPath();
   if (!repo || !path) return;
   if (isInlineEditing(client, path)) {
     client.ui.flashNotification(t("編集を終えてから削除してください。", "Finish editing before deleting this note."), "error");
@@ -83,7 +86,7 @@ async function deleteCurrentNote(client: Client): Promise<void> {
     }
     committed = true;
     await sync.performSpaceSync();
-    await client.navigate({ path: client.getIndexRef().path as Path });
+    if (client.currentPath() === path) await client.navigate({ path: client.getIndexRef().path as Path });
     client.ui.flashNotification(t("削除しました。GitHub の履歴から戻せます。", "Deleted. You can restore it from the GitHub history."));
   } catch (e) {
     client.ui.flashNotification(

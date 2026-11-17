@@ -2,7 +2,7 @@ import { sync } from "@silverbulletmd/silverbullet/syscalls";
 import type { Client } from "./client.ts";
 import { isInlineEditing } from "./vault_web_inline_edit.ts";
 import { githubApiFetch } from "./vault_web_fetch.ts";
-import { gitBlobSha, listDrafts } from "./vault_web_save.ts";
+import { gitBlobSha, hasDraftsUnder, listDrafts } from "./vault_web_save.ts";
 import { otherRepoMessage, t } from "./vault_web_i18n.ts";
 import { parsePageMetaLastModified } from "./lib/page_meta.ts";
 import { notFoundError } from "@silverbulletmd/silverbullet/constants";
@@ -16,7 +16,8 @@ export const moveConflictMessage = () => t(
 );
 
 let moving = false;
-type Move = { source: string; destination: string; sha: string };
+/** フォルダの移動は sha を持たない（中身ごと付け替えるので、版を突き合わせない。worker/move.ts） */
+type Move = { source: string; destination: string; sha: string } | { source: string; destination: string; folder: true };
 const histories = new WeakMap<Client, { undo: Move[]; redo: Move[] }>();
 function historyFor(client: Client) {
   let history = histories.get(client);
@@ -77,10 +78,12 @@ async function replayMove(client: Client, direction: "undo" | "redo"): Promise<b
   if (!move || moving) return false;
   const source = direction === "undo" ? move.destination : move.source;
   const destination = direction === "undo" ? move.source : move.destination;
-  return performMove(client, source, destination, undefined, move.sha, () => {
+  const replayed = () => {
     history[direction].pop();
     history[direction === "undo" ? "redo" : "undo"].push(move);
-  });
+  };
+  if ("folder" in move) return performFolderMove(client, source, destination, replayed);
+  return performMove(client, source, destination, undefined, move.sha, replayed);
 }
 
 /** GitHubが受け付けるまで、一覧も手元のファイルも動かさない。 */
@@ -90,6 +93,72 @@ export async function moveVaultFile(client: Client, source: string, destination:
     history.undo.push({ source, destination, sha });
     history.redo.length = 0;
   });
+}
+
+/** フォルダ（末尾の / なし）を中身ごと移す。GitHub では1回のコミットになる */
+export async function moveVaultFolder(client: Client, source: string, destination: string): Promise<boolean> {
+  return performFolderMove(client, source, destination, () => {
+    const history = historyFor(client);
+    history.undo.push({ source, destination, folder: true });
+    history.redo.length = 0;
+  });
+}
+
+/** 新しい名前を付けたフォルダの場所。親のフォルダはそのまま。使えない名前や、変わらない名前なら undefined */
+export function renamedFolder(folder: string, name: string): string | undefined {
+  const parent = folder.slice(0, folder.lastIndexOf("/") + 1);
+  const base = name.trim();
+  if (!base || base.startsWith(".") || /[\/\\:\u0000-\u001f\u007f]/.test(base)) return undefined;
+  const next = parent + base;
+  return next === folder ? undefined : next;
+}
+
+async function performFolderMove(client: Client, source: string, destination: string, onCommit: () => void): Promise<boolean> {
+  const repo = client.bootConfig.githubRepo;
+  if (!repo || moving) return false;
+  const current = client.currentPath();
+  const inside = (folder: string) => !!current && current.startsWith(`${folder}/`);
+  if ((inside(source) || inside(destination)) && isInlineEditing(client, current)) {
+    client.ui.flashNotification(t("編集中のノートがあるフォルダは移動できません。編集を完了してから移動してください。", "Finish editing the note in this folder before moving it."), "error");
+    return false;
+  }
+  if (hasDraftsUnder(repo, source) || hasDraftsUnder(repo, destination)) {
+    client.ui.flashNotification(t("フォルダの中に下書きがあるため移動できません。保存または破棄してから移動してください。", "A file in this folder has a draft. Save or discard it before moving the folder."), "error");
+    return false;
+  }
+  moving = true;
+  let committed = false;
+  try {
+    client.ui.flashNotification(t("フォルダを移動しています…", "Moving folder…"));
+    const res = await githubApiFetch(`${document.baseURI.replace(/\/*$/, "")}/api/gh`, "/move", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source, destination, folder: true }),
+    }, { redirectToLogin: false });
+    if (res.status === 409) {
+      client.ui.flashNotification(t("移動先に同じ名前があるか、フォルダが見つからないため移動しませんでした。最新の状態に更新して確かめてください。", "Didn't move the folder: the destination already has that name, or the folder wasn't found. Refresh from GitHub and check."), "error");
+      return false;
+    }
+    if (res.status === 412) {
+      client.ui.flashNotification(otherRepoMessage(), "error");
+      return false;
+    }
+    if (!res.ok) throw new Error(`Move folder HTTP ${res.status}`);
+    committed = true;
+    onCommit();
+    await sync.performSpaceSync();
+    if (current && inside(source)) await client.navigate({ path: (destination + current.slice(source.length)) as Path });
+    client.ui.flashNotification(t("フォルダを移動しました。", "Folder moved."));
+    return true;
+  } catch (e) {
+    client.ui.flashNotification(committed
+      ? t("移動しましたが、表示を更新できませんでした。再読み込みしてください。", "Moved, but couldn't refresh the view. Please reload.")
+      : t("移動の完了を確認できませんでした。最新の状態に更新して確認してください。", "Couldn't confirm the move. Refresh from GitHub to check."), "error");
+    client.reportError(e, "move folder");
+    return false;
+  } finally {
+    moving = false;
+  }
 }
 
 async function performMove(client: Client, source: string, destination: string, lastModified: string | number | undefined, expectedSha: string | undefined, onCommit: (sha: string) => void): Promise<boolean> {

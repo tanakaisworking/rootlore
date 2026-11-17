@@ -3,8 +3,8 @@ import type { Client } from "./client.ts";
 import { inlineEditor } from "./vault_web_inline_edit.ts";
 import { sync } from "@silverbulletmd/silverbullet/syscalls";
 import { githubApiFetch } from "./vault_web_fetch.ts";
-import { gitBlobSha, listDrafts } from "./vault_web_save.ts";
-import { moveVaultFile, renamedPath, undoVaultMove, redoVaultMove } from "./vault_web_move.ts";
+import { gitBlobSha, hasDraftsUnder, listDrafts } from "./vault_web_save.ts";
+import { moveVaultFile, moveVaultFolder, renamedFolder, renamedPath, undoVaultMove, redoVaultMove } from "./vault_web_move.ts";
 
 vi.mock("@silverbulletmd/silverbullet/syscalls", () => ({ sync: { performSpaceSync: vi.fn() } }));
 vi.mock("./vault_web_fetch.ts", () => ({ githubApiFetch: vi.fn() }));
@@ -20,7 +20,7 @@ test("renaming keeps the folder and the extension, and refuses names that would 
   }
 });
 vi.mock("./vault_web_save.ts", async (original) => ({
-  ...await original<typeof import("./vault_web_save.ts")>(), listDrafts: vi.fn(() => []),
+  ...await original<typeof import("./vault_web_save.ts")>(), listDrafts: vi.fn(() => []), hasDraftsUnder: vi.fn(() => false),
 }));
 
 const data = new Uint8Array([0, 255, 128, 42]);
@@ -46,8 +46,37 @@ beforeEach(() => {
   readFile.mockResolvedValue({ data, meta: { lastModified: 1000 } });
   vi.mocked(sync.performSpaceSync).mockResolvedValue(1);
   vi.mocked(listDrafts).mockReturnValue([]);
+  vi.mocked(hasDraftsUnder).mockReturnValue(false);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+test("renaming a folder keeps its parent and refuses names that would move it elsewhere", () => {
+  expect(renamedFolder("Projects/old", "new")).toBe("Projects/new");
+  expect(renamedFolder("top", " 上 ")).toBe("上");
+  for (const name of ["", ".hidden", "a/b", "old"]) expect(renamedFolder("Projects/old", name)).toBeUndefined();
+});
+
+test("a folder move sends the whole folder, follows the open note inside it, and undoes as a folder", async () => {
+  const folderClient = Object.create(client, { currentPath: { value: () => "Projects/old/sub/a.md" } }) as Client;
+  vi.mocked(githubApiFetch).mockResolvedValue(Response.json({ moved: true }));
+  expect(await moveVaultFolder(folderClient, "Projects/old", "Archive/old")).toBe(true);
+  expect(JSON.parse(vi.mocked(githubApiFetch).mock.calls[0][2]!.body as string)).toEqual({ source: "Projects/old", destination: "Archive/old", folder: true });
+  expect(readFile).not.toHaveBeenCalled();
+  expect(navigate).toHaveBeenCalledWith({ path: "Archive/old/sub/a.md" });
+  expect(await undoVaultMove(folderClient)).toBe(true);
+  expect(JSON.parse(vi.mocked(githubApiFetch).mock.calls[1][2]!.body as string)).toEqual({ source: "Archive/old", destination: "Projects/old", folder: true });
+});
+
+test("a draft anywhere in the folder, or a refused move, leaves the folder where it is", async () => {
+  vi.mocked(hasDraftsUnder).mockImplementation((_repo, folder) => folder === "Projects/old");
+  expect(await moveVaultFolder(client, "Projects/old", "Archive/old")).toBe(false);
+  expect(githubApiFetch).not.toHaveBeenCalled();
+  vi.mocked(hasDraftsUnder).mockReturnValue(false);
+  vi.mocked(githubApiFetch).mockResolvedValue(Response.json({ error: "conflict" }, { status: 409 }));
+  expect(await moveVaultFolder(client, "Projects/old", "Archive/old")).toBe(false);
+  expect(sync.performSpaceSync).not.toHaveBeenCalled();
+  expect(await undoVaultMove(client)).toBe(false);
+});
 
 test("a confirmed binary move syncs and follows the open file only after the server accepts it", async () => {
   vi.mocked(githubApiFetch).mockImplementation(async (_base, _path, init) => {

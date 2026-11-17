@@ -175,6 +175,32 @@ export function listDrafts(scope: DraftScope, store: DraftStore | undefined = st
   return found.sort((a, b) => b.draft.savedAt - a.draft.savedAt);
 }
 
+/** フォルダ（folder は末尾の / なし）の中のどれかのファイルに下書きがあるか。フォルダを移動する前に確かめる */
+export function hasDraftsUnder(repo: Repo, folder: string, store: DraftStore | undefined = storage()): boolean {
+  if (!store) return false;
+  try {
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (!key?.startsWith(draftPrefix)) continue;
+      // キーは vw-draft:[owner,repo,branch,path]:id。id（UUID）に "]" は入らない
+      const end = key.lastIndexOf("]:");
+      let scope: unknown;
+      try {
+        scope = JSON.parse(key.slice(draftPrefix.length, end + 1));
+      } catch {
+        continue; // 形の違うキーは、ほかのものなので見ない
+      }
+      if (!Array.isArray(scope)) continue;
+      const [owner, name, branch, path] = scope;
+      if (owner === repo.owner && name === repo.repo && branch === repo.branch && typeof path === "string" && path.startsWith(`${folder}/`)) return true;
+    }
+  } catch {
+    // 保存場所を読めなければ、あるものとして扱って移動を止める
+    return true;
+  }
+  return false;
+}
+
 /** 残せなければ false（ブラウザの保存場所がいっぱい、など） */
 export function writeDraft(scope: DraftScope, id: string, draft: Draft, store: DraftStore | undefined = storage()): boolean {
   try {

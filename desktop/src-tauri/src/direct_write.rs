@@ -202,15 +202,16 @@ pub fn parse_commit(body: &Value) -> Option<CommitRequest> {
     Some(CommitRequest { files: parsed, links: parsed_links, deletions: parsed_deletions, message })
 }
 
-pub fn parse_move(body: &Value) -> Option<(String, String, String)> {
+/// 移動（move.ts と同じ）。base が None ならフォルダの移動（コミットする時点の中身を丸ごと付け替える）
+pub fn parse_move(body: &Value) -> Option<(String, String, Option<String>)> {
     let source = body.get("source")?.as_str()?;
     let destination = body.get("destination")?.as_str()?;
-    let base = sha(body.get("baseSha")?)?;
     if !editable_path(source) || !editable_path(destination) || source == destination
         || destination.starts_with(&format!("{source}/")) || source.starts_with(&format!("{destination}/"))
     {
         return None;
     }
+    let base = if body.get("folder") == Some(&Value::Bool(true)) { None } else { Some(sha(body.get("baseSha")?)?) };
     Some((source.into(), destination.into(), base))
 }
 
@@ -416,10 +417,17 @@ fn commit(target: &Target, request: &CommitRequest) -> Result<Reply, Failure> {
     })
 }
 
-fn move_file(target: &Target, (source, destination, base): &(String, String, String)) -> Result<Reply, Failure> {
+fn move_file(target: &Target, (source, destination, base): &(String, String, Option<String>)) -> Result<Reply, Failure> {
     let gh = GitHub::new(target);
-    let outcome = gh.edit(&[source.as_str(), destination.as_str()], |found| match (&found[0], &found[1]) {
-        (Found::Entry { sha, mode, kind }, Found::Missing) if kind == "blob" && sha == base => Ok((
+    let outcome = gh.edit(&[source.as_str(), destination.as_str()], |found| match (&found[0], &found[1], base) {
+        (Found::Entry { sha, kind, .. }, Found::Missing, None) if kind == "tree" => Ok((
+            vec![
+                json!({ "path": source, "mode": "040000", "type": "tree", "sha": Value::Null }),
+                json!({ "path": destination, "mode": "040000", "type": "tree", "sha": sha }),
+            ],
+            format!("Rootlore: Move {source}/ → {destination}/"),
+        )),
+        (Found::Entry { sha, mode, kind }, Found::Missing, Some(base)) if kind == "blob" && sha == base => Ok((
             vec![
                 json!({ "path": source, "mode": mode, "type": "blob", "sha": Value::Null }),
                 json!({ "path": destination, "mode": mode, "type": "blob", "sha": sha }),
@@ -488,6 +496,8 @@ mod tests {
     #[test]
     fn move_and_delete_requests_are_checked_like_the_worker() {
         assert!(parse_move(&json!({ "source": "a.md", "destination": "b/a.md", "baseSha": SHA })).is_some());
+        assert_eq!(parse_move(&json!({ "source": "a", "destination": "b/a", "folder": true })).unwrap().2, None);
+        assert!(parse_move(&json!({ "source": "a", "destination": "b/a" })).is_none());
         assert!(parse_move(&json!({ "source": "a", "destination": "a/b", "baseSha": SHA })).is_none());
         assert!(parse_move(&json!({ "source": "a.md", "destination": "Library/Std/a.md", "baseSha": SHA })).is_none());
         assert!(parse_delete(&json!({ "path": "Notes/a.md", "baseSha": SHA })).is_some());
@@ -539,5 +549,11 @@ mod tests {
         assert_eq!(call("/move", json!({ "source": "e2e/note.md", "destination": "e2e/moved.md", "baseSha": second })).0, 200);
         assert_eq!(call("/delete", json!({ "path": "e2e/moved.md", "baseSha": second })).0, 200);
         assert_eq!(call("/delete", json!({ "path": "e2e/moved.md", "baseSha": second })).0, 409);
+        // フォルダの移動: 中のファイルごと1回で動く。行き先がふさがっていれば止まる
+        assert_eq!(call("/commit", json!({ "files": [{ "path": "box/a.md", "content": "YQ==", "baseSha": null }, { "path": "box/sub/b.md", "content": "Yg==", "baseSha": null }] })).0, 200);
+        assert_eq!(call("/move", json!({ "source": "box", "destination": "README.md", "folder": true })).0, 409);
+        assert_eq!(call("/move", json!({ "source": "box", "destination": "e2e/box", "folder": true })).0, 200);
+        assert_eq!(call("/commit", json!({ "files": [{ "path": "e2e/box/sub/b.md", "content": "Yg==", "baseSha": null }] })).0, 409);
+        assert_eq!(call("/commit", json!({ "files": [{ "path": "box/a.md", "content": "YQ==", "baseSha": null }] })).0, 200);
     }
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import {
   clearDraft, decodeNote, gitBlobSha, listDrafts, saveNote, SaveError, writeDraft,
-  clearAllDrafts,
+  clearAllDrafts, hasDraftsUnder,
 } from "./vault_web_save.ts";
 
 const repo = { owner: "me", repo: "notes", branch: "main" };
@@ -153,4 +153,25 @@ test("ログアウトのときは、この端末の下書きをすべて消す�
   expect(fake.getItem("vw-language")).toBe("ja");
   // 元の本文も残っていない
   expect(JSON.stringify([...store.values()])).not.toContain("元の本文");
+});
+
+test("a folder has drafts when any file under it, in the same repository, has one", () => {
+  const data = new Map<string, string>();
+  const store = {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+    key: (i: number) => [...data.keys()][i] ?? null,
+    get length() {
+      return data.size;
+    },
+  };
+  const draft = { text: "x", base: { text: "", sha: null }, savedAt: 1 };
+  writeDraft({ repo, path: "Projects/old/sub/a]:b.md" }, "id", draft, store);
+  writeDraft({ repo: { ...repo, repo: "other" }, path: "Archive/a.md" }, "id", draft, store);
+  data.set("vw-draft:broken", "{}");
+  expect(hasDraftsUnder(repo, "Projects/old", store)).toBe(true);
+  expect(hasDraftsUnder(repo, "Projects", store)).toBe(true);
+  expect(hasDraftsUnder(repo, "Projects/ol", store)).toBe(false);
+  expect(hasDraftsUnder(repo, "Archive", store)).toBe(false);
 });

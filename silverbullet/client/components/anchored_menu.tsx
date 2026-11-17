@@ -32,6 +32,15 @@ export function AnchoredMenu({
   // Layout, not passive: `useEffect` is deferred to an animation frame, and a
   // click arriving in that window would find no listener and be dropped.
   useLayoutEffect(() => {
+    // vault-web: 下に入りきらなければ、きっかけの上に出す（サイドバーの下の方の行を右クリックしたとき）
+    const menu = ref.current;
+    if (menu) {
+      const box = menu.getBoundingClientRect();
+      if (box.bottom > globalThis.innerHeight - 8) {
+        const above = trigger.getBoundingClientRect().top - box.height - 4;
+        menu.style.top = `${Math.max(8, above)}px`;
+      }
+    }
     // The trigger's own children are part of the trigger: without this a click
     // on the avatar inside the button would close and immediately reopen.
     const onPointer = (e: PointerEvent) => {

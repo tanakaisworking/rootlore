@@ -91,6 +91,27 @@ test.each(["source", "destination", "busy"])("concurrent %s updates stop the mov
   expect(writes.filter((w) => w.method === "PATCH")).toHaveLength(race === "busy" ? 3 : 1);
 });
 
+test("a folder moves as one tree in one commit, with whatever it holds at commit time", async () => {
+  const folderMove = { source: "folder", destination: "archive/folder", folder: true as const };
+  expect(parseMoveRequest(folderMove)).toEqual(folderMove);
+  expect(parseMoveRequest({ ...folderMove, destination: "folder/inside" })).toBeNull();
+  expect(parseMoveRequest({ source: "folder", destination: "archive" })).toBeNull(); // ファイルの移動には版が要る
+
+  const writes = github();
+  expect(await moveFile("token", repo, "main", { source: "folder", destination: "archive", folder: true })).toBe(true);
+  expect(writes[0]!.body).toEqual({ base_tree: "root-1", tree: [
+    { path: "folder", mode: "040000", type: "tree", sha: null },
+    { path: "archive", mode: "040000", type: "tree", sha: "folder-1" },
+  ] });
+  expect(writes[1]!.body.message).toBe("Rootlore: Move folder/ → archive/");
+
+  // ファイルをフォルダとして動かそうとしたり、行き先がふさがっていたら何もしない
+  const none = github();
+  expect(await moveFile("token", repo, "main", { source: "image.png", destination: "archive", folder: true })).toBe(false);
+  expect(await moveFile("token", repo, "main", { source: "folder", destination: "image.png", folder: true })).toBe(false);
+  expect(none).toEqual([]);
+});
+
 test("the move endpoint returns 409 for a conflict and accepts JSON POST only", async () => {
   github({ changed: true });
   const res = await handleMove(new Request("https://app/api/gh/move", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }), "token", repo, "main");

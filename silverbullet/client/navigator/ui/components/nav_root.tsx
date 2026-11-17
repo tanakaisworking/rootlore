@@ -47,6 +47,8 @@ import {
 import { ListView } from "./list_view.tsx";
 import { fileDragData } from "../file_drag_export.ts";
 import { t } from "../../../vault_web_i18n.ts";
+import { AnchoredMenu } from "../../../components/anchored_menu.tsx";
+import { type TreeMenuTarget, treeMenuItems } from "../../../vault_web_tree_menu.ts";
 
 /**
  * The panel itself: the input state a view is browsed with, wired to the
@@ -78,6 +80,8 @@ export function NavRoot({
   const [selectedPath, setSelectedPath] = useState<string | undefined>(
     undefined,
   );
+  // vault-web: サイドバーのファイル一覧で右クリックした行（vault_web_tree_menu.ts）
+  const [treeMenu, setTreeMenu] = useState<{ row: HTMLElement; obj: TreeMenuTarget } | undefined>(undefined);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -522,7 +526,7 @@ export function NavRoot({
             showEmpty={!canCreate}
             separator={view.meta.hierarchy.separator}
             canDrag={canDrag}
-            canDragNode={client.bootConfig.githubRepo ? (node) => !node.isFolder && !!node.row : undefined}
+            canDragNode={client.bootConfig.githubRepo ? (node) => node.isFolder ? !node.row : !!node.row : undefined}
             fileDragData={
               view.name === "std.spaceTree" &&
               (globalThis.matchMedia?.("(pointer: fine)").matches ?? false)
@@ -598,6 +602,14 @@ export function NavRoot({
             }
             onAction={(node, index) =>
               void cmd.runAction(index, nodeObject(node))
+            }
+            onContextMenu={
+              spaceTree && client.bootConfig.githubRepo
+                ? (node, row) => {
+                    const obj = nodeObject(node) as TreeMenuTarget;
+                    if (treeMenuItems(client, obj).length) setTreeMenu({ row, obj });
+                  }
+                : undefined
             }
           />
         ) : view?.meta.mode === "table" ? (
@@ -699,6 +711,14 @@ export function NavRoot({
       </div>
       {/* vault-web: まだ GitHub に繋いでいないときは、下のボタンの上に連携の案内を出す */}
       {slot === "lhs" && <SidebarConnectCard client={client} />}
+      {treeMenu && treeMenu.row.isConnected && (
+        <AnchoredMenu
+          trigger={treeMenu.row}
+          header={{ title: treeMenu.obj.name.slice(treeMenu.obj.name.lastIndexOf("/") + 1) }}
+          items={treeMenuItems(client, treeMenu.obj)}
+          onClose={() => setTreeMenu(undefined)}
+        />
+      )}
       {/* vault-web: 左のサイドバーの下に、設定とアカウントのボタン */}
       {slot === "lhs" && (
         <div className="vw-sidebar-footer">

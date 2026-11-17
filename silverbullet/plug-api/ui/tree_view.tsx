@@ -100,6 +100,8 @@ export type TreeViewProps = {
   onMove: (draggedPath: string, targetFolder: string) => void;
   onExternalFiles?: (transfer: DataTransfer, targetFolder: string) => void;
   onAction: (node: TreeNode, actionIndex: number) => void;
+  /** vault-web: 右クリック。row は右クリックされた行（メニューをその下に出す） */
+  onContextMenu?: (node: TreeNode, row: HTMLElement) => void;
   scrollContainerSelector?: string;
   focusableRows?: boolean;
   onRowKeyDown?: (node: TreeNode, event: KeyboardEvent) => void;
@@ -129,6 +131,7 @@ export function TreeView({
   onMove,
   onExternalFiles,
   onAction,
+  onContextMenu,
   scrollContainerSelector,
   focusableRows,
   onRowKeyDown,
@@ -153,14 +156,21 @@ export function TreeView({
     onAction,
     onRowKeyDown,
     fileDragData,
+    onContextMenu,
   });
-  latest.current = { onToggle, onSelect, onAction, onRowKeyDown, fileDragData };
+  latest.current = { onToggle, onSelect, onAction, onRowKeyDown, fileDragData, onContextMenu };
   const handlers = useMemo<RowHandlers>(
     () => ({
       toggle: (path) => latest.current.onToggle(path),
       select: (node) => latest.current.onSelect?.(node),
       action: (node, index) => latest.current.onAction(node, index),
       keyDown: (node, event) => latest.current.onRowKeyDown?.(node, event),
+      contextMenu: (node, event) => {
+        const open = latest.current.onContextMenu;
+        if (!open) return;
+        event.preventDefault();
+        open(node, event.currentTarget as HTMLElement);
+      },
     }),
     [],
   );
@@ -387,6 +397,7 @@ type RowHandlers = {
   select: (node: TreeNode) => void;
   action: (node: TreeNode, actionIndex: number) => void;
   keyDown: (node: TreeNode, event: KeyboardEvent) => void;
+  contextMenu: (node: TreeNode, event: MouseEvent) => void;
 };
 
 /** What every row of one tree shares. `expanded`, `selectedPath`,
@@ -725,6 +736,7 @@ function TreeItemRow(props: TreeItemProps) {
         onKeyDown={
           keyed ? (e) => handlers.keyDown(node, e as KeyboardEvent) : undefined
         }
+        onContextMenu={(e) => handlers.contextMenu(node, e as MouseEvent)}
         onClick={
           selectable || node.isFolder
             ? () =>

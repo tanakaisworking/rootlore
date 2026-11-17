@@ -7,7 +7,7 @@ import type { Repo } from "./proxy";
 export type Entry = { path: string; sha: string; mode: string; type: string };
 /** そのパスの今の状態。無ければ null、途中がファイルで辿れなければ "blocked" */
 export type Found = Entry | null | "blocked";
-export type TreeChange = { path: string; mode: string; type: "blob"; sha: string | null };
+export type TreeChange = { path: string; mode: string; type: "blob" | "tree"; sha: string | null };
 /** 今の状態を見て、書き換える中身を決める。書き換えてはいけなければ null */
 export type Plan = (found: Found[]) => { changes: TreeChange[]; message: string } | null;
 

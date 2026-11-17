@@ -74,6 +74,12 @@ export function registerVaultNewNoteHereCommand(client: Client, hook: CommandHoo
 }
 
 let creating = false;
+
+/** サイドバーの右クリックの「ここに新しいノート」。folder は末尾に / を付けた場所か ""（一番上） */
+export function createNoteIn(client: Client, folder: string): Promise<void> {
+  return createNote(client, folder, false);
+}
+
 /** 仮の名前がふさがっているとき、番号を付けて試す回数 */
 const UNTITLED_TRIES = 20;
 

@@ -12,11 +12,15 @@ export const releases: Release[] = [
       "開いてから最初のページが出るまでの数秒間、空白の画面のままだったのを、読み込み中の印を出すようにしました。",
       ".base ファイルも、上のバーの「編集」で元のファイルを直して保存したり、「削除」で消したりできるようにしました。",
       "Mac アプリで、左のファイル一覧からドラッグしてファイルを別のフォルダに移せなかった問題を直しました。",
+      "フォルダも、ドラッグで中身ごと別のフォルダへ移したり、名前を変えたりできるようにしました。",
+      "左のファイル一覧を右クリックすると、開く・名前を変更・パスをコピー・ここに新しいノート・削除のメニューが出るようにしました。",
     ],
     en: [
       "The few seconds before the first page opens now show a loading indicator instead of an empty screen.",
       ".base files can now be edited (Edit opens the source) and deleted from the top bar.",
       "Fixed dragging files to another folder in the sidebar of the Mac app.",
+      "Folders can now be dragged into another folder, with everything inside, and renamed.",
+      "Right-click a file or folder in the sidebar for Open, Rename, Copy path, New note here, and Delete.",
     ],
   },
   {

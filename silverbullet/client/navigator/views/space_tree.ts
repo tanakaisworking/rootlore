@@ -12,7 +12,7 @@ import { isHiddenPage, isMetaPage, spaceContents } from "./pages.ts";
 import { baseMeta, type BuiltinView, type Segment } from "./types.ts";
 import { t } from "../../vault_web_i18n.ts";
 import { documentIcon } from "../../vault_web_file_icon.ts";
-import { moveVaultFile } from "../../vault_web_move.ts";
+import { moveVaultFile, moveVaultFolder } from "../../vault_web_move.ts";
 
 type TreeObj = Partial<ObjectValue<Record<string, any>>> & {
   name: string;
@@ -80,7 +80,8 @@ async function spaceTreeSource(): Promise<TreeObj[]> {
 
 async function moveByRename(obj: TreeObj, newName: string): Promise<void | boolean> {
   if (globalThis.client?.bootConfig?.githubRepo) {
-    if (obj.isFolder) return false;
+    // vault-web: フォルダは中身ごと移す。同じ名前のノートがあるフォルダ（ノートとフォルダの組）は、片方だけ動くのを避けて移さない
+    if (obj.isFolder) return obj.ref == null ? await moveVaultFolder(globalThis.client, obj.name, newName) : false;
     const suffix = obj.tag === "document" ? "" : ".md";
     return await moveVaultFile(globalThis.client, obj.name + suffix, newName + suffix, obj.lastModified);
   }
