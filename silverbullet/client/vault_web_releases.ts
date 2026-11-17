@@ -14,6 +14,7 @@ export const releases: Release[] = [
       "Mac アプリで、左のファイル一覧からドラッグしてファイルを別のフォルダに移せなかった問題を直しました。",
       "フォルダも、ドラッグで中身ごと別のフォルダへ移したり、名前を変えたりできるようにしました。",
       "左のファイル一覧を右クリックすると、開く・名前を変更・パスをコピー・ここに新しいノート・削除のメニューが出るようにしました。",
+      "Mac アプリの「アップデートを確認」で最新だったとき、いまのバージョンも出すようにしました。",
     ],
     en: [
       "The few seconds before the first page opens now show a loading indicator instead of an empty screen.",
@@ -21,6 +22,7 @@ export const releases: Release[] = [
       "Fixed dragging files to another folder in the sidebar of the Mac app.",
       "Folders can now be dragged into another folder, with everything inside, and renamed.",
       "Right-click a file or folder in the sidebar for Open, Rename, Copy path, New note here, and Delete.",
+      "In the Mac app, Check for Updates now shows the current version when you're up to date.",
     ],
   },
   {

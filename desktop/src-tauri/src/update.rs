@@ -108,7 +108,13 @@ async fn check(app: AppHandle, silent: bool) {
         Ok(None) => {
             log("update-none", serde_json::json!({}));
             if !silent {
-                alert(&app, &language, "いまが最新です。", "You're up to date.");
+                let version = app.package_info().version.to_string();
+                alert(
+                    &app,
+                    &language,
+                    &format!("いまが最新です（バージョン {version}）。"),
+                    &format!("You're up to date (version {version})."),
+                );
             }
         }
         Err(error) => {
