@@ -2072,3 +2072,22 @@ html[data-theme="dark"] .sb-notifications > div {
 @media (max-width: 600px) {
   .vw-base-header h1 { font-size: 22px; }
 }
+// .base の元の YAML を直す画面（vault_web_base_viewer.tsx の BaseSourceEditor）。見た目は元のファイルの表示とそろえる
+.vw-base-source-input {
+  display: block;
+  width: 100%;
+  min-height: 60vh;
+  box-sizing: border-box;
+  resize: vertical;
+  color: inherit;
+  white-space: pre;
+  overflow-wrap: normal;
+  tab-size: 2;
+  &:focus { outline: 2px solid var(--link-color); outline-offset: 1px; }
+}
+.vw-base-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}

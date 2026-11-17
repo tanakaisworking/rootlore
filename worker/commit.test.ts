@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe("isWritablePath", () => {
-  test.each(["a.md", "日記/2026-11-03.md", "a b/c.md", ".claude/skills/okf/SKILL.md"])(
+  test.each(["a.md", "日記/2026-11-03.md", "a b/c.md", ".claude/skills/okf/SKILL.md", "Notes/一覧.base"])(
     "allows %s",
     (path) => {
       expect(isWritablePath(path)).toBe(true);
@@ -32,6 +32,9 @@ describe("isWritablePath", () => {
   test.each([
     "",
     "a.png",
+    "a.base.png",
+    ".obsidian/x.base",
+    "Library/Std/Rootlore/Demo/ja/デモ/一覧.base",
     "/a.md",
     "a//b.md",
     "../a.md",

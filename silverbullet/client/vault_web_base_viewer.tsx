@@ -1,9 +1,12 @@
-// vault-web: .base ファイル（Obsidian の Bases）を開いたときの画面。ノートの一覧を表で出す（読み取り専用）。
+// vault-web: .base ファイル（Obsidian の Bases）を開いたときの画面。ノートの一覧を表で出す。
+// 上のバーの「編集」を押すと（vault_web_edit.ts の baseEditEvent）、元の YAML を直して GitHub に保存できる。
+// 保存はノートと同じ口（vault_web_save.ts の saveNote）。間に変わっていれば3方向でまとめ、ぶつかれば印付きで戻す。
 // 中身の解釈は vault_web_base.ts。ここは索引からノートを集めて、表・タブ・お知らせ・元の YAML を描く。
 // content_manager.ts から、画像などと同じく本文（CodeMirror）の代わりに出す。
 
 import { render } from "preact";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { sync } from "@silverbulletmd/silverbullet/syscalls";
 import { encodePageURI, type Ref } from "@silverbulletmd/silverbullet/lib/ref";
 import type { DocumentMeta } from "@silverbulletmd/silverbullet/type/index";
 import type { Client } from "./client.ts";
@@ -18,6 +21,8 @@ import {
   rowFromPage,
 } from "./vault_web_base.ts";
 import { t } from "./vault_web_i18n.ts";
+import { baseEditEvent } from "./vault_web_edit.ts";
+import { type Base, gitBlobSha, saveNote, SaveError } from "./vault_web_save.ts";
 
 export class BaseDocumentViewer implements ActiveDocumentEditor {
   readonly name = "BaseViewer";
@@ -40,7 +45,7 @@ export class BaseDocumentViewer implements ActiveDocumentEditor {
     this.parent.classList.add("hide-cm");
     const source = data ? new TextDecoder().decode(data) : "";
     render(
-      <BaseView key={`${meta.name}:${meta.lastModified}`} client={this.client} name={meta.name} source={source} />,
+      <BaseView key={`${meta.name}:${meta.lastModified}`} client={this.client} name={meta.name} source={source} bytes={data} />,
       this.container,
     );
   }
@@ -90,7 +95,103 @@ async function loadRows(client: Client): Promise<BaseRow[]> {
   return rows;
 }
 
-function BaseView({ client, name, source }: { client: Client; name: string; source: string }) {
+type Editing = { base: Base; text: string; saving: boolean; conflict: boolean };
+
+/** 元の YAML を直す画面。保存の決まりはノートと同じ（間に変わっていれば3方向でまとめる） */
+function BaseSourceEditor({ client, name, editing, setEditing, onSaved }: {
+  client: Client;
+  name: string;
+  editing: Editing;
+  setEditing: (next: Editing | undefined) => void;
+  onSaved: (text: string, sha: string) => void;
+}) {
+  const area = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { area.current?.focus(); }, []);
+  const dirty = editing.text !== editing.base.text;
+  const save = async () => {
+    const repo = client.bootConfig.githubRepo;
+    if (!repo || editing.saving || !dirty) return;
+    setEditing({ ...editing, saving: true });
+    try {
+      const result = await saveNote(`${document.baseURI.replace(/\/*$/, "")}/api/gh`, repo, name, editing.base, editing.text);
+      if (result.status === "conflict") {
+        setEditing({ base: result.base, text: result.text, saving: false, conflict: true });
+        client.ui.flashNotification(t("最新版と衝突しました。競合箇所を直して保存してください。", "Conflicting changes found. Resolve the markers and save."), "error");
+        return;
+      }
+      onSaved(editing.text, result.sha);
+      setEditing(undefined);
+      client.ui.flashNotification(t("保存しました。", "Saved."));
+      void sync.performSpaceSync().catch((e) => client.reportError(e, "sync after saving base"));
+    } catch (e) {
+      setEditing({ ...editing, saving: false });
+      client.ui.flashNotification(
+        e instanceof SaveError && e.message === "conflict-markers"
+          ? t("競合の印が残っています。直してから保存してください。", "Resolve the conflict markers before saving.")
+          : e instanceof SaveError && e.message === "other-repo"
+          ? t("別のタブで、開くリポジトリが切り替わりました。内容を写してから、ページを再読み込みしてください。", "Another tab opened a different repository. Copy your edits, then reload this page.")
+          : t("保存を完了できませんでした。直した内容はそのまま残しています。", "Couldn't finish saving. Your edits are still here."),
+        "error",
+      );
+      if (!(e instanceof SaveError)) client.reportError(e, "save base");
+    }
+  };
+  const cancel = async () => {
+    if (editing.saving) return;
+    if (dirty && !(await client.ui.confirm(t("未保存の変更を破棄して編集を終了しますか？", "Discard unsaved changes and finish editing?"), { destructive: true }))) return;
+    setEditing(undefined);
+  };
+  return (
+    <div className="vw-base-editor">
+      {editing.conflict && (
+        <p className="vw-base-notice vw-base-notice-error" role="alert">
+          {t("GitHub で先に変わっていて、同じ所がぶつかりました。<<<<<<< から >>>>>>> の間を直して保存してください。", "The file changed on GitHub and the same lines conflict. Fix the parts between <<<<<<< and >>>>>>>, then save.")}
+        </p>
+      )}
+      <textarea
+        ref={area}
+        className="vw-base-source vw-base-source-input"
+        value={editing.text}
+        readOnly={editing.saving}
+        spellcheck={false}
+        aria-label={t("元のファイル（YAML）", "Source (YAML)")}
+        onInput={(e) => setEditing({ ...editing, text: e.currentTarget.value })}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); void save(); }
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); void cancel(); }
+        }}
+      />
+      <div className="vw-base-editor-actions">
+        <button type="button" className="vw-base-source-toggle" disabled={editing.saving} onClick={() => void cancel()}>
+          {t("キャンセル", "Cancel")}
+        </button>
+        <button type="button" className="vw-base-source-toggle vw-base-save" disabled={editing.saving || !dirty} onClick={() => void save()}>
+          {editing.saving ? t("保存しています…", "Saving…") : t("保存", "Save")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BaseView({ client, name, source: loaded, bytes }: { client: Client; name: string; source: string; bytes?: Uint8Array }) {
+  // 保存したあとは、同期を待たずに保存した中身で表を作り直す
+  const [saved, setSaved] = useState<Base | undefined>();
+  const source = saved?.text ?? loaded;
+  const [editing, setEditing] = useState<Editing | undefined>();
+  useEffect(() => {
+    const begin = async (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== name || editing) return;
+      try {
+        const base: Base = saved ?? { text: loaded, sha: bytes ? await gitBlobSha(bytes) : null };
+        setEditing({ base, text: base.text, saving: false, conflict: false });
+      } catch (e) {
+        client.reportError(e, "begin editing base");
+        client.ui.flashNotification(t("このファイルを編集できませんでした。", "Couldn't edit this file."), "error");
+      }
+    };
+    globalThis.addEventListener(baseEditEvent, begin);
+    return () => globalThis.removeEventListener(baseEditEvent, begin);
+  }, [client, name, loaded, bytes, saved, editing]);
   const parsed = useMemo((): { base: BaseFile } | { error: string } => {
     try {
       return { base: parseBase(source) };
@@ -146,6 +247,23 @@ function BaseView({ client, name, source }: { client: Client; name: string; sour
     () => (okBase && activeView && state.kind === "ready" ? buildTable(okBase, activeView, state.rows) : undefined),
     [okBase, activeView, state],
   );
+
+  if (editing) {
+    return (
+      <div className="vw-base">
+        <header className="vw-base-header">
+          <h1>{title}</h1>
+        </header>
+        <BaseSourceEditor
+          client={client}
+          name={name}
+          editing={editing}
+          setEditing={setEditing}
+          onSaved={(text, sha) => setSaved({ text, sha })}
+        />
+      </div>
+    );
+  }
 
   if ("error" in parsed) {
     return (

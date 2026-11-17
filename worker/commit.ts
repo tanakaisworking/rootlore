@@ -53,10 +53,10 @@ export function isSkillLinkTarget(path: string, target: string): boolean {
   return target === `../../.claude/skills/${path.split("/").pop()}`;
 }
 
-/** Rootlore が書いてよいパスか。Markdown のノートだけで、隠しフォルダと同梱の標準ライブラリは除く */
+/** Rootlore が書いてよいパスか。Markdown のノートと Obsidian の Bases（.base）だけで、隠しフォルダと同梱の標準ライブラリは除く */
 export function isWritablePath(path: string): boolean {
   if (path.length === 0 || path.length > 1024) return false;
-  if (!path.endsWith(".md") || path.startsWith("Library/Std/")) return false;
+  if (!(path.endsWith(".md") || path.endsWith(".base")) || path.startsWith("Library/Std/")) return false;
   if (/[\\:\u0000-\u001f\u007f]/.test(path)) return false;
   if (isSkillPath(path)) return true;
   return path.split("/").every((segment) => segment.length > 0 && !segment.startsWith("."));

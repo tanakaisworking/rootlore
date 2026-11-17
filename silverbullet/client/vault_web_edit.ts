@@ -43,6 +43,10 @@ export function editWindowFeatures(s: ScreenLike): string {
 }
 
 const stdLibPrefix = "Library/Std/";
+/** この画面で直せるファイル。ノート（.md）と、Obsidian の Bases（.base。vault_web_base_viewer.tsx で YAML を直す） */
+const editablePath = (path: string) => path.endsWith(".md") || path.endsWith(".base");
+/** 開いている .base を直す画面に切り替える合図（vault_web_base_viewer.tsx が受ける） */
+export const baseEditEvent = "vw-base-edit";
 
 /** GitHub の編集画面の URL。直せないページ（ホーム、見つからないページ、同梱のページ）は undefined */
 export function editUrlFor(
@@ -51,7 +55,7 @@ export function editUrlFor(
   lastModified: string | undefined,
 ): string | undefined {
   // ファイルがなく、その場で作った中身（ホーム、「ページが見つかりません」、仮想ページ）には日時がない
-  if (!lastModified || !path.endsWith(".md") || path.startsWith(stdLibPrefix)) {
+  if (!lastModified || !editablePath(path) || path.startsWith(stdLibPrefix)) {
     return undefined;
   }
   const encode = (value: string) =>
@@ -108,7 +112,6 @@ export function registerVaultWebEditCommand(client: Client, hook: CommandHook) {
   hook.registerCommand({
     name: editNoteCommand,
     ...shortcutKeys(editNoteCommand),
-    requireEditor: "page",
     run: async () => {
       const path = client.currentPath();
       if (!canEditNote(repo, path, client.currentPageMeta()?.lastModified)) {
@@ -121,13 +124,16 @@ export function registerVaultWebEditCommand(client: Client, hook: CommandHook) {
         );
         return;
       }
+      if (path.endsWith(".base")) {
+        globalThis.dispatchEvent(new CustomEvent(baseEditEvent, { detail: path }));
+        return;
+      }
       await openNoteEditor(path, client);
     },
   });
 
   hook.registerCommand({
     name: noteHistoryCommand,
-    requireEditor: "page",
     run: async () => {
       const url = historyUrlFor(repo, client.currentPath(), client.currentPageMeta()?.lastModified);
       if (!url) {

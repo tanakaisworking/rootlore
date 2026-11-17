@@ -14,6 +14,9 @@ test("opens the GitHub editor for a note in the vault", () => {
 });
 
 test("pages that are not files in the vault cannot be edited on GitHub", () => {
+  // .base（Obsidian の Bases）は直せる。同梱のデモの .base は直せない
+  expect(editUrlFor(repo, "Notes/一覧.base", time)).toContain("/edit/");
+  expect(editUrlFor(repo, "Library/Std/Rootlore/Demo/ja/デモ/一覧.base", time)).toBeUndefined();
   // ホーム、「ページが見つかりません」、仮想ページは、その場で作った中身なので日時がない
   expect(editUrlFor(repo, "index.md", "")).toBeUndefined();
   expect(editUrlFor(repo, "index.md", undefined)).toBeUndefined();

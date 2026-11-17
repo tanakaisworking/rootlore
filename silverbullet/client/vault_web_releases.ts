@@ -8,8 +8,14 @@ export const releases: Release[] = [
   {
     version: "0.0.15",
     date: "2026-11-18",
-    ja: ["開いてから最初のページが出るまでの数秒間、空白の画面のままだったのを、読み込み中の印を出すようにしました。"],
-    en: ["The few seconds before the first page opens now show a loading indicator instead of an empty screen."],
+    ja: [
+      "開いてから最初のページが出るまでの数秒間、空白の画面のままだったのを、読み込み中の印を出すようにしました。",
+      ".base ファイルも、上のバーの「編集」で元のファイルを直して保存したり、「削除」で消したりできるようにしました。",
+    ],
+    en: [
+      "The few seconds before the first page opens now show a loading indicator instead of an empty screen.",
+      ".base files can now be edited (Edit opens the source) and deleted from the top bar.",
+    ],
   },
   {
     version: "0.0.14",

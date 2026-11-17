@@ -86,9 +86,9 @@ fn skill_link_target(path: &str, target: &str) -> bool {
     target == format!("../../.claude/skills/{}", path.rsplit('/').next().unwrap_or(""))
 }
 
-/// 保存できる場所（commit.ts の isWritablePath）。Markdown のノートだけで、隠しフォルダと同梱の標準ライブラリは除く
+/// 保存できる場所（commit.ts の isWritablePath）。Markdown のノートと .base だけで、隠しフォルダと同梱の標準ライブラリは除く
 pub fn writable_path(path: &str) -> bool {
-    if path.is_empty() || path.len() > 1024 || !path.ends_with(".md") || path.starts_with("Library/Std/") || bad_chars(path) {
+    if path.is_empty() || path.len() > 1024 || !(path.ends_with(".md") || path.ends_with(".base")) || path.starts_with("Library/Std/") || bad_chars(path) {
         return false;
     }
     skill_path(path) || plain_segments(path)
@@ -453,7 +453,8 @@ mod tests {
     fn paths_follow_the_worker_rules() {
         assert!(writable_path("Notes/a.md"));
         assert!(writable_path(".claude/skills/my-skill/SKILL.md"));
-        for bad in ["Notes/a.txt", "Library/Std/x.md", ".github/x.md", "a//b.md", "a\\b.md", "../x.md", ".claude/skills/Bad/SKILL.md"] {
+        assert!(writable_path("Notes/一覧.base"));
+        for bad in ["Notes/a.txt", "Library/Std/x.md", ".github/x.md", "a//b.md", "a\\b.md", "../x.md", ".claude/skills/Bad/SKILL.md", ".obsidian/x.base"] {
             assert!(!writable_path(bad), "{bad}");
         }
         assert!(editable_path("Notes/image.png"));
