@@ -736,6 +736,14 @@ export class MainUI {
             <Panel config={viewState.panels.lhs} editor={client} slot="lhs" />
           )}
           <div id="sb-editor" />
+          {/* vault-web: 画面の枠を描いてから最初のページが開くまで（プラグインの読み込みなど、数秒かかる）、
+              本文の場所に読み込み中の印を出す。index.html の起動中の印（scripts/build.mjs）は枠を描いた時点で消える */}
+          {!viewState.current && (
+            <div className="vw-boot vw-boot-inline" role="status">
+              <span className="vw-boot-spinner" aria-hidden="true" />
+              <span>{t("読み込んでいます…", "Loading…")}</span>
+            </div>
+          )}
           {/* vault-web: 設定とアカウントのページは、本文の代わりにこの画面（components/vault_web_dialogs.tsx） */}
           <VaultWebPageView client={client} path={viewState.current?.path} />
           {viewState.panels.rhs.mode !== undefined && (

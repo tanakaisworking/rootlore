@@ -298,6 +298,40 @@ html[data-theme="dark"] {
 }
 
 // 押して名前を変えられるタイトル（components/top_bar.tsx）。見た目はふつうのタイトルのまま、乗せたときだけ下線
+// 最初のページが開くまでの読み込み中の印（editor_ui.tsx）。起動中の印（scripts/build.mjs）と同じ見た目で、続けて出す
+.vw-boot-inline {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--subtle-color, #777);
+  pointer-events: none;
+
+  .vw-boot-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: vw-boot-inline-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes vw-boot-inline-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vw-boot-inline .vw-boot-spinner {
+    animation: none;
+  }
+}
+
 #sb-top .vw-page-title-rename {
   max-width: 100%;
   padding: 0;
