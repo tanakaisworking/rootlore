@@ -10,6 +10,27 @@ use serde::{Deserialize, Serialize};
 
 const SERVICE: &str = "jp.hibachi.rootlore";
 const ACCOUNT: &str = "github-token";
+/// GitHub App 方式のログイン（うちのサーバーのセッションの Cookie）。開き直しや更新でつなぎ直さなくて済むように残す
+const SESSION_ACCOUNT: &str = "app-session";
+
+/// GitHub App 方式のセッションを Keychain から読む
+pub fn read_session() -> Option<String> {
+    let entry = keyring::Entry::new(SERVICE, SESSION_ACCOUNT).ok()?;
+    entry.get_password().ok().filter(|c| c.starts_with("vw_session="))
+}
+
+/// GitHub App 方式のセッションを Keychain に置く（ログインしたときと、更新したとき）
+pub fn write_session(cookie: &str) -> Result<(), String> {
+    let entry = keyring::Entry::new(SERVICE, SESSION_ACCOUNT).map_err(|e| e.to_string())?;
+    entry.set_password(cookie).map_err(|e| e.to_string())
+}
+
+/// GitHub App 方式のセッションを消す（トークンでつなぎ直したとき）
+pub fn clear_session() {
+    if let Ok(entry) = keyring::Entry::new(SERVICE, SESSION_ACCOUNT) {
+        let _ = entry.delete_credential();
+    }
+}
 
 /// 繋ぎ方
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

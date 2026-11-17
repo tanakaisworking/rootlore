@@ -275,6 +275,10 @@ fn handle_deep_link(app: &tauri::AppHandle, url: &Url) {
         return;
     };
     *crate::guard::lock(&state_handle.cookie) = Some(cookie.clone());
+    // 開き直しても、アプリを更新しても、つなぎ直さなくて済むように残す
+    if let Err(e) = store::write_session(&cookie) {
+        log(&serde_json::json!({ "stage": "session-save-error", "error": e }).to_string());
+    }
     *crate::guard::lock(&state_handle.mode) = store::Mode::App;
     // 繋ぎ先は、うちのサーバーの設定から受け取る（リポジトリとブランチ）
     if let Some((owner, name, branch)) = server_repo(&agent, &cookie) {
@@ -292,7 +296,7 @@ fn handle_deep_link(app: &tauri::AppHandle, url: &Url) {
 }
 
 /// 応答の Set-Cookie から、セッションの Cookie を取り出す（名前と値だけ）
-fn response_cookie(response: &ureq::Response) -> Option<String> {
+pub(crate) fn response_cookie(response: &ureq::Response) -> Option<String> {
     for header in response.all("Set-Cookie") {
         let pair = header.split(';').next()?.trim();
         if pair.starts_with("vw_session=") {
@@ -443,10 +447,13 @@ fn main() {
             let state = std::sync::Arc::new(local::AppState {
                 root,
                 data_dir: data_dir.clone(),
-                // 保存した繋ぎ方が App でも、Cookie は残していないので、ログインからやり直してもらう
                 mode: Mutex::new(connection.as_ref().map(|c| c.mode).unwrap_or(store::Mode::Token)),
                 token: Mutex::new(token),
-                cookie: Mutex::new(None),
+                // GitHub App 方式のログインは Keychain から戻す（以前は残さず、開き直すたびに未接続になっていた）
+                cookie: Mutex::new(match connection.as_ref().map(|c| c.mode) {
+                    Some(store::Mode::App) => store::read_session(),
+                    _ => None,
+                }),
                 repo: Mutex::new(repo.map(|(owner, name)| (owner, name, connection.as_ref().unwrap().branch.clone()))),
             });
             // ディープリンク（ログインの戻り）からも同じ状態を使えるようにする

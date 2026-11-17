@@ -460,52 +460,41 @@ fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, ur
         .timeout_connect(std::time::Duration::from_secs(10))
         .timeout(std::time::Duration::from_secs(60))
         .build();
-    let mut call = agent
-        .request(method.as_str(), &target)
-        .set("Accept", "application/vnd.github+json")
-        .set("X-GitHub-Api-Version", "2022-11-28")
-        .set("User-Agent", "rootlore");
-    match auth.as_deref() {
-        Some(value) if value.starts_with("COOKIE:") => {
-            call = call.set("Cookie", &value["COOKIE:".len()..]);
+    let content_type = request_header(&request, "Content-Type");
+    let accept = request_header(&request, "Accept").filter(|a| a == "application/vnd.github.raw+json");
+    let etag = request_header(&request, "If-None-Match");
+    let send = |auth: Option<&str>| {
+        let mut call = agent
+            .request(method.as_str(), &target)
+            .set("Accept", accept.as_deref().unwrap_or("application/vnd.github+json"))
+            .set("X-GitHub-Api-Version", "2022-11-28")
+            .set("User-Agent", "rootlore");
+        match auth {
+            Some(value) if value.starts_with("COOKIE:") => call = call.set("Cookie", &value["COOKIE:".len()..]),
+            Some(value) => call = call.set("Authorization", value),
+            None => {}
         }
-        Some(value) => {
-            call = call.set("Authorization", value);
+        if let Some(value) = content_type.as_deref() {
+            call = call.set("Content-Type", value);
         }
-        None => {}
-    }
-    if let Some(content_type) = request
-        .headers()
-        .iter()
-        .find(|h| h.field.equiv("Content-Type"))
-        .map(|h| h.value.as_str().to_string())
-    {
-        call = call.set("Content-Type", &content_type);
-    }
-    if let Some(accept) = request
-        .headers()
-        .iter()
-        .find(|h| h.field.equiv("Accept"))
-        .map(|h| h.value.as_str().to_string())
-    {
-        if accept == "application/vnd.github.raw+json" {
-            call = call.set("Accept", &accept);
+        if let Some(value) = etag.as_deref() {
+            call = call.set("If-None-Match", value);
         }
-    }
-    if let Some(etag) = request
-        .headers()
-        .iter()
-        .find(|h| h.field.equiv("If-None-Match"))
-        .map(|h| h.value.as_str().to_string())
-    {
-        call = call.set("If-None-Match", &etag);
-    }
-
-    let result = if *method == Method::Post {
-        call.send_bytes(&body)
-    } else {
-        call.call()
+        if *method == Method::Post { call.send_bytes(&body) } else { call.call() }
     };
+
+    let mut result = send(auth.as_deref());
+    // GitHub App 方式で 401: うちのサーバーのアクセス用の鍵が切れた（8時間）。セッションを更新して1回だけやり直す
+    if let (crate::store::Mode::App, Err(ureq::Error::Status(401, _))) = (mode, &result) {
+        let used = auth.as_deref().and_then(|a| a.strip_prefix("COOKIE:")).unwrap_or("").to_string();
+        match refresh_session(state, &used) {
+            Some(cookie) => result = send(Some(&format!("COOKIE:{cookie}"))),
+            None => {
+                let _ = request.respond(Response::json_error(401, "login"));
+                return Ok(());
+            }
+        }
+    }
     match result {
         Ok(response) => {
             let status = response.status();
@@ -535,6 +524,41 @@ fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, ur
         }
     }
     Ok(())
+}
+
+fn request_header(request: &Request, name: &'static str) -> Option<String> {
+    request.headers().iter().find(|h| h.field.equiv(name)).map(|h| h.value.as_str().to_string())
+}
+
+/// 同時に1つだけ更新する（refresh token は1回しか使えない。重なると、あとの更新でログインが切れる）
+static REFRESHING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// GitHub App 方式のセッションを更新して、新しい Cookie を返す。used はその要求で使った Cookie。
+/// 待っている間にほかの要求が更新を済ませていれば、それを使う。更新できなければ None（ログインし直し）
+fn refresh_session(state: &AppState, used: &str) -> Option<String> {
+    let _turn = crate::guard::lock(&REFRESHING);
+    if let Some(current) = crate::guard::lock(&state.cookie).clone() {
+        if current != used {
+            return Some(current);
+        }
+    }
+    let response = ureq::post("https://rootlore.app/.auth/refresh")
+        .set("Cookie", used)
+        .timeout(std::time::Duration::from_secs(30))
+        .send_string("");
+    let cookie = match response {
+        Ok(response) => crate::response_cookie(&response),
+        Err(e) => {
+            crate::log(&serde_json::json!({ "stage": "session-refresh-error", "error": e.to_string() }).to_string());
+            None
+        }
+    }?;
+    *crate::guard::lock(&state.cookie) = Some(cookie.clone());
+    if let Err(e) = crate::store::write_session(&cookie) {
+        crate::log(&serde_json::json!({ "stage": "session-save-error", "error": e }).to_string());
+    }
+    crate::log(r#"{"stage":"session-refreshed"}"#);
+    Some(cookie)
 }
 
 trait JsonError {
@@ -683,6 +707,8 @@ fn connect_with_token(state: &AppState, mut request: Request) -> Result<(), Stri
     }
     *crate::guard::lock(&state.token) = Some(token);
     *crate::guard::lock(&state.mode) = crate::store::Mode::Token;
+    *crate::guard::lock(&state.cookie) = None;
+    crate::store::clear_session();
     *crate::guard::lock(&state.repo) = Some((owner.to_string(), name.to_string(), branch.clone()));
     let connection = crate::store::Connection {
         mode: crate::store::Mode::Token,

@@ -6,6 +6,16 @@ export type Release = { version: string; date: string; ja: string[]; en: string[
 
 export const releases: Release[] = [
   {
+    version: "0.0.14",
+    date: "2026-11-17",
+    ja: [
+      "GitHub でつないだあと、アプリを開き直したり更新したりすると、つながりが切れてノートが見えなくなる問題を直しました。開いたままでも、8時間ごとに切れていたのを自動でつなぎ直します。",
+    ],
+    en: [
+      "Fixed the GitHub connection being lost, and notes disappearing from view, when the app reopened or updated. It also renews the connection on its own instead of dropping it every eight hours.",
+    ],
+  },
+  {
     version: "0.0.13",
     date: "2026-11-17",
     ja: [
