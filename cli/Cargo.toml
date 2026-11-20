@@ -10,6 +10,10 @@ path = "src/main.rs"
 
 [dependencies]
 ureq = { version = "2", features = ["json"] }
+# ureq と同じ TLS。OS の証明書（プロキシの証明書など）を、同梱のルート証明書に足して使う（src/net.rs）
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-native-certs = "0.8"
+webpki-roots = "0.26"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tiny_http = "0.12"

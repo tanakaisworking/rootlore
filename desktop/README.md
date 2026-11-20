@@ -68,4 +68,8 @@ Deleting the app leaves the link broken. The standalone CLI still installs and w
 
 `rootlore update` (`cli/src/update.rs`) reads `cli-latest.json` attached to the latest app release, downloads the file for the platform, and checks it with the app's updater public key before replacing itself. A CLI inside the app refuses and points to the app update. CLI 0.2.0 still reads it from `rootlore-releases`.
 
-To release: bump `version` in `cli/Cargo.toml`, run `TAURI_SIGNING_PRIVATE_KEY=<key> scripts/release-cli.sh`, upload `dist-cli/rootlore-macos-aarch64` and its `.sig` to a `cli-v<version>` release of `tanakaisworking/rootlore` (mark it not latest, so the app stays the latest release), then attach `dist-cli/cli-latest.json` to the latest app release with `gh release upload <tag> dist-cli/cli-latest.json --clobber`. Upload the CLI file before the manifest so no client sees a missing download.
+Each file is named `rootlore-<platform>`, and `cli-latest.json` lists it under the same `<platform>`: `macos-aarch64`, `linux-x86_64`, `linux-aarch64`, and the static builds `linux-x86_64-musl` and `linux-aarch64-musl`. A musl build updates to the musl file.
+
+To release: bump `version` in `cli/Cargo.toml`, then push the tag `cli-v<version>` (or run the workflow from the Actions tab). `.github/workflows/release-cli.yml` builds and tests every platform, signs the files with the `TAURI_SIGNING_PRIVATE_KEY` secret (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one), uploads them to a `cli-v<version>` release that is not marked latest (so the app stays the latest release), and then attaches `cli-latest.json` to the latest app release. The files go up before the manifest so no client sees a missing download.
+
+`scripts/release-cli.sh` builds and signs only the macOS file of the Mac it runs on. Use it to check a build locally; its `cli-latest.json` lists only that platform, so do not upload it.

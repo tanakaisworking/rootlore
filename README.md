@@ -74,15 +74,32 @@ The Mac app includes the `rootlore` command and links it to `~/.local/bin/rootlo
 
 Without the app, install the standalone command from the terminal. If the app's link is already there, skip this; the app keeps the command up to date.
 
+Set `asset` to the file for your computer:
+
+| Computer | File |
+| --- | --- |
+| Mac with Apple silicon | `rootlore-macos-aarch64` |
+| Linux, x86_64 | `rootlore-linux-x86_64` |
+| Linux, ARM64 | `rootlore-linux-aarch64` |
+| Linux without glibc 2.35 or newer (Alpine, older distributions, containers) | `rootlore-linux-x86_64-musl`, `rootlore-linux-aarch64-musl` |
+
 ```sh
+asset=rootlore-linux-x86_64
+version=$(curl -fsSL https://github.com/tanakaisworking/rootlore/releases/latest/download/cli-latest.json | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p')
 mkdir -p ~/.local/bin
-curl -fL -o ~/.local/bin/rootlore https://github.com/tanakaisworking/rootlore/releases/download/cli-v0.2.0/rootlore-macos-aarch64
+curl -fL -o ~/.local/bin/rootlore "https://github.com/tanakaisworking/rootlore/releases/download/cli-v$version/$asset"
 chmod +x ~/.local/bin/rootlore
 ```
 
-Then run `rootlore update` to move to the newest version; it checks the signature before replacing itself. A file downloaded with a browser is quarantined by macOS, so use `curl` as above.
+Linux files are published from the first CLI release after 0.2.1. Until then, build from source: `cargo build --release --manifest-path cli/Cargo.toml`.
+
+Then run `rootlore update` to move to the newest version; it picks the file for your platform and checks the signature before replacing itself. A file downloaded with a browser is quarantined by macOS, so use `curl` as above.
 
 Run `rootlore login` to sign in through your browser, then `rootlore help` for the commands.
+
+When the browser is on another computer (a server, a VM, or a container reached over SSH), run `rootlore login --headless`. It prints a sign-in link instead of waiting for the browser on this computer. Open the link in any browser and sign in. The browser then stops at a page it cannot open, `http://127.0.0.1:<port>/callback?code=…`; copy that address and paste it into the terminal. The code works once and only for this login.
+
+The CLI sends its requests through the proxy in `HTTPS_PROXY` (or `https_proxy`), except for hosts listed in `NO_PROXY` (or `no_proxy`). It trusts the certificates installed on the system as well as its built-in ones, so a proxy that re-signs HTTPS traffic works when its certificate is installed on the system (on Linux, also through `SSL_CERT_FILE`).
 If your shell says `command not found`, add `~/.local/bin` to your PATH: `export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`.
 
 ## Data and permissions

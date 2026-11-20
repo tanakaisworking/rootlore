@@ -1,0 +1,125 @@
+# CLI を配る: macOS と Linux 向けにビルドし、アプリの更新と同じ鍵で署名して、cli-v<版> のリリースに載せ、
+# cli-latest.json を最新のアプリのリリースに添付し直す（rootlore update が読む。cli/src/update.rs）。
+# 始め方: cli/Cargo.toml の version を上げて、tag cli-v<版> を push する（または Actions から手で動かす）。
+# 必要な secrets: TAURI_SIGNING_PRIVATE_KEY（と、鍵に合言葉があれば TAURI_SIGNING_PRIVATE_KEY_PASSWORD）
+name: Release CLI
+
+on:
+  push:
+    tags: ["cli-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-cli
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            platform: macos-aarch64
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+            platform: linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-22.04-arm
+            platform: linux-aarch64
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-22.04
+            platform: linux-x86_64-musl
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-22.04-arm
+            platform: linux-aarch64-musl
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install musl tools
+        if: endsWith(matrix.target, '-musl')
+        run: |
+          sudo apt-get update && sudo apt-get install -y musl-tools
+          # ring の C のコードを musl でビルドする
+          echo "CC_$(echo "${{ matrix.target }}" | tr - _)=musl-gcc" >> "$GITHUB_ENV"
+      - name: Test
+        run: cargo test --locked --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
+      - name: Check the binary runs
+        run: |
+          mkdir -p dist-cli
+          cp cli/target/${{ matrix.target }}/release/rootlore dist-cli/rootlore-${{ matrix.platform }}
+          dist-cli/rootlore-${{ matrix.platform }} --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rootlore-${{ matrix.platform }}
+          path: dist-cli/rootlore-${{ matrix.platform }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-cli
+          merge-multiple: true
+      - name: Check the version
+        id: version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' cli/Cargo.toml | head -1)
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "cli-v$version" ]; then
+            echo "tag $GITHUB_REF_NAME does not match cli/Cargo.toml version $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Sign
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          for file in dist-cli/rootlore-*; do
+            npx --yes @tauri-apps/cli@2 signer sign "$file" >/dev/null
+          done
+      - name: Write cli-latest.json
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          base="https://github.com/$GH_REPO/releases/download/cli-v$VERSION"
+          platforms='{}'
+          for sig in dist-cli/rootlore-*.sig; do
+            asset=$(basename "$sig" .sig)
+            platforms=$(jq --arg name "${asset#rootlore-}" --arg url "$base/$asset" --arg signature "$(cat "$sig")" \
+              '. + {($name): {url: $url, signature: $signature}}' <<< "$platforms")
+          done
+          jq -n --arg version "$VERSION" --argjson platforms "$platforms" '{version: $version, platforms: $platforms}' > dist-cli/cli-latest.json
+          cat dist-cli/cli-latest.json
+      - name: Publish
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # CLI のリリースは latest にしない（アプリのリリースを latest のままにする）。ファイルを先に載せてから、配布情報を差し替える
+          tag="cli-v$VERSION"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --latest=false --title "CLI $VERSION" --notes "rootlore CLI $VERSION. Run \`rootlore update\` to install it."
+          fi
+          gh release upload "$tag" dist-cli/rootlore-* --clobber
+          app=$(gh release view --json tagName --jq .tagName)
+          gh release upload "$app" dist-cli/cli-latest.json --clobber

@@ -1,15 +1,17 @@
 // Rootlore の CLI（rootlore）。GitHub が正本の Vault を、探す前に取り込み（変わったノートだけ）、手元の写しで探す・読む・書く。
 // ログインは、ふだんのブラウザで行い（Worker の /.auth/desktop）、使い捨ての番号を手元の受け口で受け取る。
+// ブラウザが別の PC にあるとき（login --headless）は、番号の載った URL を貼ってもらう。
 // GitHub の鍵は持たず、Worker の中継（接続した1つのリポジトリだけ）を通して読み書きする。
 // 取り込んだノートは、読むだけの写し（キャッシュの置き場所）に置く。書くときは、写しを直さずに write・append で送る。
 // 送るときは読んだときの版を添え、GitHub で先に変わっていれば3方向でまとめる。同じ所がぶつかったら、
 // GitHub のノートはそのままにして、印付きのまとめを「ノート名.conflicted-日時.md」に残す（何も消さない）。
 
+mod net;
 mod update;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
-use std::io::{IsTerminal, Read};
+use std::io::{BufRead, IsTerminal, Read};
 use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -149,11 +151,7 @@ fn session_cookie(resp: &ureq::Response) -> Option<String> {
 }
 
 fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new()
-        .redirects(0)
-        .timeout(Duration::from_secs(60))
-        .user_agent(concat!("rootlore-cli/", env!("CARGO_PKG_VERSION")))
-        .build()
+    net::agent(&base_url(), Duration::from_secs(60)).redirects(0).build()
 }
 
 struct Api {
@@ -253,17 +251,37 @@ fn query_param(query: &str, key: &str) -> Option<String> {
     })
 }
 
-fn login() -> Result<()> {
-    let server = tiny_http::Server::http("127.0.0.1:0").map_err(|e| format!("手元の受け口を開けません: {e}"))?;
-    let port = server.server_addr().to_ip().ok_or("手元の受け口を開けません")?.port();
+/// ログインの始まり。PKCE: 番号が漏れても、この CLI が持つ verifier がなければ引き換えられない
+struct LoginStart {
+    state: String,
+    verifier: String,
+    url: String,
+}
+
+fn start_login(port: u16) -> LoginStart {
     let state = random_hex(16);
-    // PKCE: 番号が漏れても、この CLI が持つ verifier がなければ引き換えられない
     let mut secret = [0u8; 32];
     getrandom::getrandom(&mut secret).expect("random");
     let verifier = URL_SAFE_NO_PAD.encode(secret);
     let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
     let url = format!("{}/.auth/desktop?state={state}&port={port}&challenge={challenge}", base_url());
+    LoginStart { state, verifier, url }
+}
+
+fn login(args: &[String]) -> Result<()> {
+    match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        [] => login_with_browser(),
+        ["--headless"] => login_headless(),
+        _ => Err("使い方: rootlore login [--headless]".into()),
+    }
+}
+
+fn login_with_browser() -> Result<()> {
+    let server = tiny_http::Server::http("127.0.0.1:0").map_err(|e| format!("手元の受け口を開けません: {e}"))?;
+    let port = server.server_addr().to_ip().ok_or("手元の受け口を開けません")?.port();
+    let LoginStart { state, verifier, url } = start_login(port);
     eprintln!("ブラウザでログインしてください。開かないときは、次の URL を開いてください。\n{url}");
+    eprintln!("ブラウザがこの PC にないときは、rootlore login --headless を使ってください。");
     open_browser(&url);
 
     let deadline = SystemTime::now() + Duration::from_secs(300);
@@ -290,12 +308,55 @@ fn login() -> Result<()> {
             }
         }
     };
+    redeem(&code, &verifier)
+}
 
+/// 手元に受け口を開かないログイン（ブラウザが別の PC にあるとき）。ログインし終えたブラウザは
+/// http://127.0.0.1:<port>/callback?code=… に移って開けないので、その URL（か code）を貼ってもらう
+fn login_headless() -> Result<()> {
+    let mut port = [0u8; 2];
+    getrandom::getrandom(&mut port).expect("random");
+    // 受け口は開かないので、どの番号でもよい（Worker が受け付ける 1024〜65535 から選ぶ）
+    let port = 49152 + u16::from_le_bytes(port) % 16384;
+    let LoginStart { state, verifier, url } = start_login(port);
+    eprintln!("次の URL を、どの PC のブラウザでもよいので開いてログインしてください。\n\n{url}\n");
+    eprintln!("最後に「http://127.0.0.1:{port}/callback?code=…」のページが開けずに止まります。");
+    eprintln!("そのアドレス欄の URL を丸ごとコピーして、ここに貼って Enter を押してください（code の値だけでもかまいません）。");
+    let mut line = String::new();
+    std::io::stdin().lock().read_line(&mut line).map_err(|e| format!("入力を読めません: {e}"))?;
+    let code = pasted_code(&line, &state)?;
+    redeem(&code, &verifier)
+}
+
+/// 貼られた callback の URL（か code そのもの）から code を取り出す。URL に state があれば、このログインのものか確かめる
+fn pasted_code(input: &str, state: &str) -> Result<String> {
+    let input = input.trim();
+    let code = match input.split_once('?') {
+        Some((_, query)) => {
+            let query = query.split('#').next().unwrap_or("");
+            if query_param(query, "state").is_some_and(|s| s != state) {
+                return Err("この URL は、今のログインのものではありません。rootlore login --headless をやり直してください。".into());
+            }
+            query_param(query, "code").unwrap_or_default()
+        }
+        None => input.strip_prefix("code=").unwrap_or(input).to_string(),
+    };
+    let ok = (16..=64).contains(&code.len()) && code.chars().all(|ch| ch.is_ascii_alphanumeric());
+    if !ok {
+        return Err("code が見つかりません。開けなかったページのアドレス欄の URL を丸ごと貼ってください。".into());
+    }
+    Ok(code)
+}
+
+fn redeem(code: &str, verifier: &str) -> Result<()> {
     // 番号と verifier は URL に載せず、本文で送る（記録に残さない）
     let resp = agent()
         .post(&format!("{}/.auth/desktop/redeem", base_url()))
         .send_json(json!({ "code": code, "verifier": verifier }))
-        .map_err(|e| format!("ログインを受け取れませんでした（{e}）"))?;
+        .map_err(|e| match e {
+            ureq::Error::Status(..) => "ログインを受け取れませんでした。code は1回だけ、少しのあいだしか使えません。もう一度ログインしてください。".to_string(),
+            e => format!("ログインを受け取れませんでした（{e}）"),
+        })?;
     let cookie = session_cookie(&resp).ok_or("ログインを受け取れませんでした")?;
     {
         // ほかの CLI のトークン更新と、ログイン情報の保存を重ねない
@@ -1237,6 +1298,7 @@ const HELP: &str = "rootlore — Rootlore の CLI。GitHub が正本の Vault �
 
 使い方:
   rootlore login                 ふだんのブラウザでログインする
+  rootlore login --headless      ブラウザが別の PC にあるとき。URL を開いてログインし、最後に開けなかったページの URL を貼る
   rootlore logout                この PC のログインを消す
   rootlore search <言葉…>        取り込んでから探す（空白で区切ると、全部を含むノート）
   rootlore read <場所>           取り込んでから読む（例: 0_AgentBrain/INDEX.md）
@@ -1265,13 +1327,16 @@ const HELP: &str = "rootlore — Rootlore の CLI。GitHub が正本の Vault �
   --base SHA   読んだときの版（read --json の sha。まだないノートは new）。append では省ける
   --message M  コミットの説明（1行）
   --copy P@SHA resolve で消す食い違いの写しと、読んだときの版（いくつでも）
+
+環境変数:
+  HTTPS_PROXY / https_proxy  プロキシを通す（NO_PROXY / no_proxy に合う宛先は通さない）
 ";
 
 fn run(args: Vec<String>) -> Result<()> {
     let command = args.first().map(String::as_str).unwrap_or("help");
     let rest = &args[args.len().min(1)..];
     match command {
-        "login" => login(),
+        "login" => login(rest),
         "logout" => {
             let _ = fs::remove_file(session_path()?);
             println!("この PC のログインを消しました。");
@@ -1439,5 +1504,20 @@ mod write_tests {
         assert_eq!(join_append("", "x\n"), "x\n");
         assert_eq!(join_append("a\n", "x\n"), "a\nx\n");
         assert_eq!(join_append("a", "x\n"), "a\nx\n");
+    }
+
+    #[test]
+    fn headless_login_takes_the_code_from_a_pasted_url_or_the_code_itself() {
+        use super::pasted_code;
+        let code = "abcDEF0123456789abcd";
+        let url = format!("http://127.0.0.1:50000/callback?code={code}&state=s1\n");
+        assert_eq!(pasted_code(&url, "s1").unwrap(), code);
+        assert_eq!(pasted_code(&format!("  {code}  "), "s1").unwrap(), code);
+        assert_eq!(pasted_code(&format!("code={code}"), "s1").unwrap(), code);
+        // ほかのログインの URL や、code のない URL・短すぎる値は受け取らない
+        assert!(pasted_code(&format!("http://127.0.0.1:50000/callback?code={code}&state=other"), "s1").is_err());
+        assert!(pasted_code("http://127.0.0.1:50000/callback?state=s1", "s1").is_err());
+        assert!(pasted_code("short", "s1").is_err());
+        assert!(pasted_code("abc-DEF/0123456789abcd", "s1").is_err());
     }
 }

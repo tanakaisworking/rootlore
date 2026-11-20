@@ -35,12 +35,10 @@ pub fn run() -> Result<(), String> {
     if exe.parent().is_some_and(|dir| dir.ends_with("Contents/MacOS")) {
         return Err("この rootlore は Rootlore アプリに入っているものです。アプリを更新すると新しくなります。".into());
     }
-    let agent = ureq::AgentBuilder::new()
-        .timeout(Duration::from_secs(120))
-        .user_agent(concat!("rootlore-cli/", env!("CARGO_PKG_VERSION")))
-        .build();
     // 配布情報の場所を差し替える（配布前の確認用）。中身は同じ鍵の署名で確かめるので、差し替えても署名のないものは入らない
     let manifest_url = std::env::var("ROOTLORE_UPDATE_MANIFEST").unwrap_or_else(|_| MANIFEST.into());
+    // プロキシは配布情報の宛先（github.com）で決める。中身はそこから転送された先で受け取る
+    let agent = crate::net::agent(&manifest_url, Duration::from_secs(120)).build();
     let manifest: Manifest = agent
         .get(&manifest_url)
         .call()
@@ -52,7 +50,7 @@ pub fn run() -> Result<(), String> {
         println!("最新です（{current}）。");
         return Ok(());
     }
-    let platform = format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH);
+    let platform = platform(std::env::consts::OS, std::env::consts::ARCH, cfg!(target_env = "musl"));
     let file = format!("rootlore-{platform}");
     let asset = manifest
         .platforms
@@ -83,6 +81,16 @@ fn version(text: &str) -> Result<(u64, u64, u64), String> {
 
 fn newer(latest: &str, current: &str) -> Result<bool, String> {
     Ok(version(latest)? > version(current)?)
+}
+
+/// cli-latest.json の platforms の名前で、配布ファイルは rootlore-<この名前>。
+/// 例: macos-aarch64、linux-x86_64（glibc）、linux-x86_64-musl（静的リンク）。musl の版は musl の版に入れ替える
+fn platform(os: &str, arch: &str, musl: bool) -> String {
+    if musl {
+        format!("{os}-{arch}-musl")
+    } else {
+        format!("{os}-{arch}")
+    }
 }
 
 /// 鍵も署名も、tauri signer が出す形（minisign の文面を base64 にしたもの）。
@@ -141,6 +149,18 @@ mod tests {
     fn uses_the_app_update_key() {
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../desktop/src-tauri/tauri.conf.json")).unwrap();
         assert_eq!(conf["plugins"]["updater"]["pubkey"], PUBKEY);
+    }
+
+    #[test]
+    fn names_the_platform_like_the_release_files() {
+        assert_eq!(platform("macos", "aarch64", false), "macos-aarch64");
+        assert_eq!(platform("linux", "x86_64", false), "linux-x86_64");
+        assert_eq!(platform("linux", "aarch64", true), "linux-aarch64-musl");
+        // 配布の作業（.github/workflows/release-cli.yml）が作る名前と合わせる
+        let workflow = include_str!("../../.github/workflows/release-cli.yml");
+        for name in ["macos-aarch64", "linux-x86_64", "linux-aarch64", "linux-x86_64-musl", "linux-aarch64-musl"] {
+            assert!(workflow.contains(&format!("platform: {name}\n")), "{name}");
+        }
     }
 
     // テスト用の鍵で署名したもの（npx tauri signer generate / sign で作った）
