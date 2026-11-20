@@ -20,10 +20,12 @@ function setup(
   defaultExpanded: boolean,
   filtering = false,
   initialExpanded = ["Projects"],
+  mobile = false,
 ) {
   writes.length = 0;
   let expanded = new Set(initialExpanded);
   let dirty = false;
+  let focusCalls = 0;
   const tree = buildTree(
     [
       { obj: { name: "Projects/Plan" }, primary: "Projects/Plan" },
@@ -51,7 +53,7 @@ function setup(
       treeDisplay: { tree, visible: [], effectiveExpanded: new Set() },
     } as unknown as DerivedView,
     refs: {
-      input: { current: null },
+      input: { current: { focus: () => void focusCalls++ } },
       expandedDirty: {
         get current() {
           return dirty;
@@ -60,15 +62,21 @@ function setup(
           dirty = value;
         },
       },
-    } as SharedRefs,
+    } as unknown as SharedRefs,
     set: {
       setExpanded: (update: (prev: Set<string>) => Set<string>) => {
         expanded = update(expanded);
       },
     } as PanelSetters,
     refresh: () => {},
+    mobile,
   });
-  return { cmd, expanded: () => [...expanded].sort(), dirty: () => dirty };
+  return {
+    cmd,
+    expanded: () => [...expanded].sort(),
+    dirty: () => dirty,
+    focusCalls: () => focusCalls,
+  };
 }
 
 test("expand all opens nested folders and collapse all closes them", () => {
@@ -127,4 +135,25 @@ test("bulk actions preserve folders outside the current segment", () => {
 
   cmd.collapseAllFolders();
   expect(expanded()).toEqual(["Elsewhere"]);
+});
+
+test("toggleExpanded closes an open folder and reopens it on the next tap", () => {
+  const { cmd, expanded } = setup(false);
+
+  // "Projects" starts open (see setup's initialExpanded).
+  cmd.toggleExpanded("Projects");
+  expect(expanded()).toEqual([]);
+
+  cmd.toggleExpanded("Projects");
+  expect(expanded()).toEqual(["Projects"]);
+});
+
+test("toggleExpanded restores input focus on desktop but not on mobile", () => {
+  const desktop = setup(false, false, ["Projects"], false);
+  desktop.cmd.toggleExpanded("Projects");
+  expect(desktop.focusCalls()).toBe(1);
+
+  const mobile = setup(false, false, ["Projects"], true);
+  mobile.cmd.toggleExpanded("Projects");
+  expect(mobile.focusCalls()).toBe(0);
 });

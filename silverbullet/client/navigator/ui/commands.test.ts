@@ -39,6 +39,7 @@ function setup(
   navigated.length = 0;
   const selected: Record<string, any>[] = [];
   let expanded = new Set<string>();
+  let focusCalls = 0;
   const cmd = createCommands({
     slot,
     // `expansionScope: "page"` keeps a toggle out of the datastore, which has
@@ -69,7 +70,7 @@ function setup(
         index === 0 ? { row: { obj: { name: "One" } } } : undefined,
     } as unknown as DerivedView,
     refs: {
-      input: { current: null },
+      input: { current: { focus: () => void focusCalls++ } },
       returnTo: { current: undefined },
       segmentDirty: { current: false },
       expandedDirty: { current: false },
@@ -80,10 +81,17 @@ function setup(
       setExpanded: (update: any) => {
         expanded = update(expanded);
       },
+      setSelectedPath: () => {},
     } as unknown as PanelSetters,
     refresh: () => {},
   });
-  return { cmd, selected, expanded: () => expanded, navigated };
+  return {
+    cmd,
+    selected,
+    expanded: () => expanded,
+    navigated,
+    focusCalls: () => focusCalls,
+  };
 }
 
 it("closing a mobile side drawer records a real close", async () => {
@@ -100,6 +108,22 @@ it("selecting from a mobile side drawer leaves its reopen target available", asy
   expect(hide).toHaveBeenCalledWith("rhs", undefined, {
     recordIntent: false,
     restoreDisplaced: false,
+  });
+});
+
+describe("clicking a tree row", () => {
+  it("restores input focus on desktop", () => {
+    const { cmd, focusCalls } = setup(false, true, "lhs", false);
+    cmd.onTreeRowClick(treeNode("Projects", false));
+    // Once from onTreeRowClick itself, once more from the toggleExpanded a
+    // plain folder's click falls through to.
+    expect(focusCalls()).toBe(2);
+  });
+
+  it("does not steal input focus on mobile, to keep the keyboard closed", () => {
+    const { cmd, focusCalls } = setup(false, true, "lhs", true);
+    cmd.onTreeRowClick(treeNode("Projects", false));
+    expect(focusCalls()).toBe(0);
   });
 });
 
