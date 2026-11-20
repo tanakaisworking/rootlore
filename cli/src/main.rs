@@ -1505,10 +1505,14 @@ mod write_tests {
         assert_eq!(join_append("a\n", "x\n"), "a\nx\n");
         assert_eq!(join_append("a", "x\n"), "a\nx\n");
     }
+}
+
+#[cfg(test)]
+mod login_tests {
+    use super::pasted_code;
 
     #[test]
     fn headless_login_takes_the_code_from_a_pasted_url_or_the_code_itself() {
-        use super::pasted_code;
         let code = "abcDEF0123456789abcd";
         let url = format!("http://127.0.0.1:50000/callback?code={code}&state=s1\n");
         assert_eq!(pasted_code(&url, "s1").unwrap(), code);
