@@ -1764,6 +1764,19 @@ html[data-vw-font-size="large"] #sb-main .cm-editor {
   }
 }
 
+// スマートフォンで左のサイドバーが開いているとき、裏に見えている本文の帯をタップ
+// すると閉じる（vault_web_sidebar_backdrop.tsx）。サイドバー自身は z-index 15
+// （main.scss の .sb-nav-root-lhs）より手前にあるので、その領域のタップはサイドバー
+// が先に受け取る
+@media only screen and (max-width: 600px) {
+  #sb-main .vw-sidebar-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 14;
+    background: transparent;
+  }
+}
+
 // 絞り込み欄の左の見出し（「開く」）は出さない。ノートの上下の欄の見出しは同じクラスなので残す
 .sb-nav-header-row > .sb-nav-title {
   display: none;

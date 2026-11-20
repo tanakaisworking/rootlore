@@ -24,6 +24,7 @@ export function createTreeCommands({
   refs,
   set,
   refresh,
+  mobile,
 }: {
   view?: ActiveView;
   engine: NavigatorEngine;
@@ -31,6 +32,8 @@ export function createTreeCommands({
   refs: SharedRefs;
   set: PanelSetters;
   refresh: () => void;
+  /** See `CommandDeps.mobile` in `commands.ts`. */
+  mobile: boolean;
 }) {
   const { expandedDirty, input: inputRef } = refs;
   const { setExpanded } = set;
@@ -50,7 +53,9 @@ export function createTreeCommands({
     // Tree rows are drag sources, so they are exempt from the panel-wide
     // mousedown suppression (see NavRoot); a chevron click blurs the input,
     // and this hands it back. A no-op for the keyboard path.
-    inputRef.current?.focus();
+    // vault-web: skip on mobile -- there is no drag there, and refocusing
+    // the input pops the on-screen keyboard on every folder tap.
+    if (!mobile) inputRef.current?.focus();
     // Filtering force-expands every pruned folder; a manual toggle in that
     // state would just be overridden on the next render, so skip it (and the
     // datastore write) rather than have it silently do nothing visible.
