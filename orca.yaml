@@ -1,0 +1,7 @@
+scripts:
+  setup: |
+    npm ci
+    npm --prefix silverbullet ci
+    # CLAUDE.local.md is git-ignored; copy it from the primary checkout when there is one
+    main="$(git rev-parse --path-format=absolute --git-common-dir)/.."
+    if [ -f "$main/CLAUDE.local.md" ] && [ ! -e CLAUDE.local.md ]; then cp "$main/CLAUDE.local.md" .; fi
