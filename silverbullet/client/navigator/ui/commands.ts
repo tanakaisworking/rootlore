@@ -84,6 +84,7 @@ export function createCommands({
     refs,
     set,
     refresh,
+    mobile,
   });
 
   async function close(opts?: HideOpts) {
@@ -315,7 +316,9 @@ export function createCommands({
 
   function onTreeRowClick(node: TreeNode) {
     // Drag-source rows allow mousedown, so restore input focus before selection.
-    inputRef.current?.focus();
+    // vault-web: skip this on mobile -- there is no drag there, and focusing
+    // the filter input on every row tap pops the on-screen keyboard.
+    if (!mobile) inputRef.current?.focus();
     setSelectedPath(node.path);
     void selectTreeNode(node);
   }

@@ -48,6 +48,8 @@ import {
   vaultWebTitleFor,
   vaultWebTopBarName,
 } from "./components/vault_web_dialogs.tsx";
+import { SidebarBackdrop } from "./components/vault_web_sidebar_backdrop.tsx";
+import { isNarrowScreen, MOBILE_MEDIA_QUERY } from "./lib/mobile.ts";
 import {
   KeyboardBar,
   type KeyboardBarButton,
@@ -360,6 +362,18 @@ export class MainUI {
         onClick: () => void toggleMobileDock(slot, name),
       };
     };
+
+    // vault-web: サイドバーがドロワー表示（本文に重なる）になる幅かどうか。
+    // `viewState.isMobile` は端末の種類の判定で、ドロワー表示は main.scss の
+    // 幅ブレークポイントで決まるので、ここは別に追う（navigator/ui/hooks/use_panel_events.ts
+    // の `mobile` と同じ判定）
+    const [narrowScreen, setNarrowScreen] = useState<boolean>(isNarrowScreen);
+    useEffect(() => {
+      const mql = globalThis.matchMedia(MOBILE_MEDIA_QUERY);
+      const onChange = (ev: MediaQueryListEvent) => setNarrowScreen(ev.matches);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    }, []);
 
     useEffect(() => {
       if (viewState.current) {
@@ -734,6 +748,15 @@ export class MainUI {
           <NavigatorDock slot="lhs" state={navSlots.lhs} client={client} />
           {viewState.panels.lhs.mode !== undefined && (
             <Panel config={viewState.panels.lhs} editor={client} slot="lhs" />
+          )}
+          {/* vault-web: サイドバーがドロワー表示で開いているとき、裏に見えている
+              本文をタップしたら閉じる（SidebarActionButtons の「たたむ」と同じ経路） */}
+          {narrowScreen && navSlots.lhs && (
+            <SidebarBackdrop
+              onClose={() =>
+                void toggleMobileDock("lhs", navSlots.lhs!.activation.view)
+              }
+            />
           )}
           <div id="sb-editor" />
           {/* vault-web: 画面の枠を描いてから最初のページが開くまで（プラグインの読み込みなど、数秒かかる）、
