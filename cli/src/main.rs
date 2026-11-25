@@ -737,6 +737,31 @@ fn note_name(o: &Options, missing: &str) -> Result<String> {
     Ok(if path.ends_with(".md") { path.clone() } else { format!("{path}.md") })
 }
 
+/// ノートを開くリンク。Mac アプリ用（rootlore://open?repo=…&page=…。読む側は desktop/src-tauri/src/page_link.rs）と、Web 用。
+/// 日本語や空白は % で包む（チャットや端末で、リンクが途中で切れないように）
+fn page_links(base: &str, repo: &Repo, path: &str) -> (String, String) {
+    let encode = |text: &str| text.split('/').map(path_segment).collect::<Vec<_>>().join("/");
+    let app = format!("rootlore://open?repo={}/{}&page={}", path_segment(&repo.owner), path_segment(&repo.repo), encode(path));
+    let web = format!("{base}/v/{}", encode(path.strip_suffix(".md").unwrap_or(path)));
+    (app, web)
+}
+
+fn link(o: &Options) -> Result<()> {
+    let name = note_name(o, "リンクを出すノートの場所を付けてください: rootlore link 0_AgentBrain/INDEX.md")?;
+    let store = fresh_store(o.no_pull)?;
+    if !store.state.files.contains_key(&name) {
+        return Err(format!("ノートが見つかりません: {name}"));
+    }
+    let repo = store.state.repo.as_ref().ok_or("接続中のリポジトリが分かりません")?;
+    let (app, web) = page_links(&base_url(), repo, &name);
+    if o.json {
+        println!("{}", json!({ "path": name, "app": app, "web": web }));
+    } else {
+        println!("{app}\n{web}");
+    }
+    Ok(())
+}
+
 fn list(o: &Options) -> Result<()> {
     let store = fresh_store(o.no_pull)?;
     let paths: Vec<&String> = store.state.files.keys().filter(|p| p.starts_with(&o.prefix)).collect();
@@ -1303,6 +1328,7 @@ const HELP: &str = "rootlore — Rootlore の CLI。GitHub が正本の Vault �
   rootlore search <言葉…>        取り込んでから探す（空白で区切ると、全部を含むノート）
   rootlore read <場所>           取り込んでから読む（例: 0_AgentBrain/INDEX.md）
   rootlore list                  ノートの場所の一覧
+  rootlore link <場所>           ノートを開くリンクを出す（1行目: Mac アプリで開く rootlore://…、2行目: Web の URL）
   rootlore pull                  取り込むだけ
   rootlore status                ログイン、ノートの件数、写しの場所
   rootlore path                  写しの場所（rg などで直接探すとき。読むだけにすること）
@@ -1345,6 +1371,7 @@ fn run(args: Vec<String>) -> Result<()> {
         "search" => search(&parse_options(rest)?),
         "read" => read(&parse_options(rest)?),
         "list" => list(&parse_options(rest)?),
+        "link" => link(&parse_options(rest)?),
         "write" | "append" | "resolve" => {
             let o = parse_options(rest)?;
             let done = if command == "resolve" { resolve(&o)? } else { write(&o, command == "append")? };
@@ -1411,6 +1438,20 @@ mod segment_tests {
         assert_eq!(path_segment("main"), "main");
         assert_eq!(path_segment("feature/cli"), "feature%2Fcli");
         assert_eq!(path_segment("日本"), "%E6%97%A5%E6%9C%AC");
+    }
+}
+
+#[cfg(test)]
+mod link_tests {
+    use super::{page_links, Repo};
+
+    #[test]
+    fn links_open_the_note_in_the_app_and_on_the_web() {
+        let repo = Repo { owner: "me".into(), repo: "notes".into(), branch: "main".into() };
+        let (app, web) = page_links("https://rootlore.app", &repo, "2_Areas/会社/事業 計画?.md");
+        // desktop/src-tauri/src/page_link.rs のテストが、同じリンクを読めることを確かめている
+        assert_eq!(app, "rootlore://open?repo=me/notes&page=2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F.md");
+        assert_eq!(web, "https://rootlore.app/v/2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F");
     }
 }
 

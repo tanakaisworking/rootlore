@@ -102,6 +102,18 @@ When the browser is on another computer (a server, a VM, or a container reached 
 The CLI sends its requests through the proxy in `HTTPS_PROXY` (or `https_proxy`), except for hosts listed in `NO_PROXY` (or `no_proxy`). It trusts the certificates installed on the system as well as its built-in ones, so a proxy that re-signs HTTPS traffic works when its certificate is installed on the system (on Linux, also through `SSL_CERT_FILE`).
 If your shell says `command not found`, add `~/.local/bin` to your PATH: `export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`.
 
+### Links to a note
+
+`rootlore link <note>` prints two links to a note: the first opens it in the Mac app, the second opens it on the web.
+
+```sh
+$ rootlore link Projects/example/index.md
+rootlore://open?repo=owner/notes&page=Projects/example/index.md
+https://rootlore.app/v/Projects/example/index
+```
+
+Opening the first link (a click, or `open '<link>'` in the terminal) brings the Mac app to the front and shows the note, starting the app if needed. The link names the repository, so an app connected to a different repository tells you instead of opening another note with the same name. The link only opens a note; it cannot change anything. The app must include this feature (versions after 0.0.15).
+
 ## Data and permissions
 
 - Rootlore does not store note bodies on its servers. Notes travel only between GitHub and your browser.

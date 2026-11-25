@@ -9,6 +9,7 @@ mod guard;
 mod local;
 mod mcp;
 mod menu;
+mod page_link;
 mod store;
 mod update;
 
@@ -21,6 +22,7 @@ use base64::Engine;
 use sha2::{Digest, Sha256};
 use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_opener::OpenerExt;
 
 const BASE: &str = "https://rootlore.app";
@@ -295,6 +297,51 @@ fn handle_deep_link(app: &tauri::AppHandle, url: &Url) {
     }
 }
 
+/// rootlore://open?repo=…&page=… でノートを開く（リンクの形と検証は page_link.rs）。
+/// するのは、窓を前に出して、同梱した画面のそのノートへ移ることだけ。リンクの中身で読み書きやコマンドは動かさない。
+/// 接続中のリポジトリと違うリンクは、同じ名前の別のノートを開かないように、開かずに知らせる
+fn open_page_link(app: &tauri::AppHandle, parsed: page_link::Parsed) {
+    let Some(window) = app.get_webview_window("main") else {
+        log(r#"{"stage":"page-link-no-window"}"#);
+        return;
+    };
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+    let connected = app
+        .try_state::<std::sync::Arc<local::AppState>>()
+        .and_then(|state| crate::guard::lock(&state.repo).as_ref().map(|(owner, name, _)| format!("{owner}/{name}")));
+    let (ja, en) = match parsed {
+        page_link::Parsed::Page(link) if page_link::same_repo(&link, connected.as_deref()) => {
+            match window.navigate(page_link::local_url(LOCAL_ORIGIN, &link)) {
+                Ok(()) => log(r#"{"stage":"page-link-open"}"#),
+                Err(e) => log(&serde_json::json!({ "stage": "page-link-open-error", "error": e.to_string() }).to_string()),
+            }
+            return;
+        }
+        page_link::Parsed::Page(link) => {
+            log(r#"{"stage":"page-link-other-repository"}"#);
+            (
+                format!("このリンクは {} のノートです。このアプリはそのリポジトリにつながっていないため、開きませんでした。アカウントのページでつないでから、もう一度リンクを開いてください。", link.repo),
+                format!("This link points to a note in {}. This app is not connected to that repository, so the note was not opened. Connect to it on the Account page, then open the link again.", link.repo),
+            )
+        }
+        _ => {
+            log(r#"{"stage":"page-link-rejected"}"#);
+            (
+                "このリンクは開けませんでした。Rootlore で開けるノートを指していません。".to_string(),
+                "This link could not be opened. It does not point to a note that Rootlore can open.".to_string(),
+            )
+        }
+    };
+    // 窓に付けて出す。窓に付けない案内は macOS が別のプロセスで出すので、アプリを終了しても画面に残り、リンクを開くたびに積み重なる
+    app.dialog()
+        .message(if menu::language(app) == "ja" { ja } else { en })
+        .title("Rootlore")
+        .buttons(MessageDialogButtons::Ok)
+        .parent(&window)
+        .show(|_| {});
+}
+
 /// 応答の Set-Cookie から、セッションの Cookie を取り出す（名前と値だけ）
 pub(crate) fn response_cookie(response: &ureq::Response) -> Option<String> {
     for header in response.all("Set-Cookie") {
@@ -412,9 +459,15 @@ fn main() {
             menu::apply(app.handle(), "en", false).map_err(std::io::Error::other)?;
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
-                // ログインの戻り。通信を含むので、画面のスレッドでは動かさない（OS から呼ばれる所で止まると、アプリごと落ちる）
                 for url in event.urls() {
                     let handle = handle.clone();
+                    // ノートを開くリンク（rootlore://open?…）。通信はしないので、ここで済ませる
+                    let parsed = page_link::parse(&url);
+                    if parsed != page_link::Parsed::Other {
+                        guard::run("page-link", || open_page_link(&handle, parsed));
+                        continue;
+                    }
+                    // ログインの戻り。通信を含むので、画面のスレッドでは動かさない（OS から呼ばれる所で止まると、アプリごと落ちる）
                     // 承認したらすぐアプリを前に出し、待っている間も動いていると分かるようにする（以前は固まって見えた）
                     if url.scheme() == "rootlore" && url.host_str() == Some("auth") {
                         guard::run("deep-link-status", || {
