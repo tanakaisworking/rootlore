@@ -32,3 +32,14 @@ You can include a folder, like `[[Demo/Meeting notes]]`.
 | Top bar | The name of the open note |
 | Main area | The note itself (this screen) |
 | Bottom of the sidebar | Settings, account, share |
+
+## Draw a diagram
+
+A code block whose language is `mermaid` is drawn as a diagram; move the cursor into it to see the source.
+
+```mermaid
+flowchart LR
+  A[Note] --> B{Drawing?}
+  B -->|Yes| C[Diagram]
+  B -->|No| D[Code only]
+```

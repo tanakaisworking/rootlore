@@ -36,6 +36,25 @@ const REOPEN_AFTER: Duration = Duration::from_secs(120);
 #[derive(Default)]
 struct PendingLogin(Mutex<Option<(String, String, Instant)>>);
 
+/// 拒否したリンクの案内は、同時に1枚だけ。窓に付けたネイティブダイアログを閉じるまで次の案内を出さない
+#[derive(Default)]
+struct PageLinkDialog(Mutex<bool>);
+
+impl PageLinkDialog {
+    fn begin(&self) -> bool {
+        let mut showing = crate::guard::lock(&self.0);
+        if *showing {
+            return false;
+        }
+        *showing = true;
+        true
+    }
+
+    fn end(&self) {
+        *crate::guard::lock(&self.0) = false;
+    }
+}
+
 /// 窓に差し込むスクリプト。Service Worker が動くかを確かめて report で知らせる（試作の確認用）
 const PROBE: &str = r#"
 (() => {
@@ -333,13 +352,34 @@ fn open_page_link(app: &tauri::AppHandle, parsed: page_link::Parsed) {
             )
         }
     };
-    // 窓に付けて出す。窓に付けない案内は macOS が別のプロセスで出すので、アプリを終了しても画面に残り、リンクを開くたびに積み重なる
-    app.dialog()
-        .message(if menu::language(app) == "ja" { ja } else { en })
-        .title("Rootlore")
-        .buttons(MessageDialogButtons::Ok)
-        .parent(&window)
-        .show(|_| {});
+    // 窓に付けたシートで出す。親の窓が取れないと、ダイアログは macOS の UserNotificationCenter（別のプロセス）に落ち、
+    // アプリを終了しても画面に残り、リンクを開くたびに積み重なる。だから親が取れないときは出さずにログだけ残す。
+    // リンクの受け取り（on_open_url）の中では窓の情報が取れないことがあるので、イベントループの次の順番で出す
+    let Some(dialog) = app.try_state::<PageLinkDialog>() else { return };
+    if !dialog.begin() {
+        log(r#"{"stage":"page-link-dialog-suppressed"}"#);
+        return;
+    }
+    let handle = app.clone();
+    let message = if menu::language(app) == "ja" { ja } else { en };
+    let queued = app.run_on_main_thread(move || {
+        if window.ns_window().is_err() {
+            log(r#"{"stage":"page-link-dialog-no-parent"}"#);
+            handle.state::<PageLinkDialog>().end();
+            return;
+        }
+        let done = handle.clone();
+        handle
+            .dialog()
+            .message(message)
+            .title("Rootlore")
+            .buttons(MessageDialogButtons::Ok)
+            .parent(&window)
+            .show(move |_| done.state::<PageLinkDialog>().end());
+    });
+    if queued.is_err() {
+        app.state::<PageLinkDialog>().end();
+    }
 }
 
 /// 応答の Set-Cookie から、セッションの Cookie を取り出す（名前と値だけ）
@@ -447,6 +487,7 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .manage(PendingLogin::default())
+        .manage(PageLinkDialog::default())
         .manage(mcp::McpState::default())
         .manage(menu::MenuState::default())
         .manage(update::Pending::default())
@@ -570,4 +611,18 @@ fn main() {
                 guard::run("install-on-exit", || update::install_pending(app));
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refusal_dialog_is_single_and_can_open_again_after_close() {
+        let dialog = PageLinkDialog::default();
+        assert!(dialog.begin());
+        assert!(!dialog.begin());
+        dialog.end();
+        assert!(dialog.begin());
+    }
 }

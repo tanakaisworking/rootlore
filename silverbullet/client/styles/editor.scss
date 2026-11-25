@@ -1026,6 +1026,37 @@ $comment-border: 1px;
     overflow: hidden;
   }
 
+  .sb-mermaid {
+    // CodeMirror counts padding, but not vertical margins, in a block widget's height.
+    padding: 0.4em 0;
+    max-width: 100%;
+    overflow-x: auto;
+
+    svg {
+      display: block;
+      max-width: none;
+    }
+  }
+
+  .sb-mermaid-error {
+    .sb-mermaid-error-message {
+      margin: 0 0 0.3em;
+      color: var(--alert-error-color);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-x: auto;
+      padding: 0.5em 0.75em;
+      border-radius: 3px;
+      color: var(--editor-code-color);
+      background: var(--editor-code-background-color);
+      font-family: var(--editor-monospace-font, monospace);
+      font-size: 0.85em;
+      line-height: 1.6;
+    }
+  }
+
   .sb-fenced-code-iframe {
     background-color: transparent;
 
