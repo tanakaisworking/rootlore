@@ -367,7 +367,7 @@ fn send_file(state: &AppState, request: Request, path: &str) -> Result<(), Strin
             }
             let _ = request.respond(response);
         }
-        Err(_) if !file.extension().is_some() => {
+        Err(_) if path != "/v/" && wants_entry(&file, request_header(&request, "Accept").as_deref()) => {
             // ノートのページ（/v/ノート名）は、画面の入口を返す
             return send_file(state, request, "/v/");
         }
@@ -376,6 +376,14 @@ fn send_file(state: &AppState, request: Request, path: &str) -> Result<(), Strin
         }
     }
     Ok(())
+}
+
+/// 同梱したファイルが無い要求に、画面の入口を返すか。ノートのページ（/v/<ノート名>）を開く要求には返す。
+/// 名前に . が入るノート（「メモ 2.0版」など）は拡張子があるように見えるので、ページを開く要求（Accept に text/html）
+/// かどうかでも見分ける。以前は拡張子の有無だけで決めていて、そういうノートを開き直すと真っ白になった。
+/// 無いスクリプトや画像の要求は 404 のまま
+fn wants_entry(file: &std::path::Path, accept: Option<&str>) -> bool {
+    file.extension().is_none() || accept.is_some_and(|accept| accept.contains("text/html"))
 }
 
 fn proxy(state: &AppState, mut request: Request, method: &Method, path: &str, url: &str) -> Result<(), String> {
@@ -982,5 +990,20 @@ mod path_tests {
         let root = PathBuf::from("/tmp/rootlore-path-test");
         assert_eq!(file_for(&root, "/v/"), Some(root.join("index.html")));
         assert_eq!(file_for(&root, "/v/.client/client.js"), Some(root.join(".client/client.js")));
+    }
+
+    #[test]
+    fn note_pages_get_the_screen_and_missing_files_do_not() {
+        let root = PathBuf::from("/tmp/rootlore-path-test");
+        let page = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+        let note = file_for(&root, "/v/2_Areas/%E3%83%A1%E3%83%A2").unwrap();
+        assert!(wants_entry(&note, Some(page)));
+        assert!(wants_entry(&note, None));
+        // 名前に . が入るノートも、ページを開く要求なら画面を返す
+        let dotted = file_for(&root, "/v/Seedance%202.0%E3%83%97%E3%83%AD%E3%83%B3%E3%83%97%E3%83%88").unwrap();
+        assert!(wants_entry(&dotted, Some(page)));
+        let missing_script = file_for(&root, "/v/.client/missing.js").unwrap();
+        assert!(!wants_entry(&missing_script, Some("*/*")));
+        assert!(!wants_entry(&missing_script, None));
     }
 }
