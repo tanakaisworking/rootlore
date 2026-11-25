@@ -31,6 +31,18 @@ export function mermaidDecorations(
   if (!isMermaidLanguage(lang) || renderMode === "disabled") return undefined;
   const lines = text.split("\n");
   if (lines.length < 2) return undefined;
+  const openingFence = lines[0].match(/^(`{3,}|~{3,})/)?.[1];
+  const closingFence = lines[lines.length - 1].match(
+    /^\s*(`{3,}|~{3,})\s*$/,
+  )?.[1];
+  if (
+    !openingFence ||
+    !closingFence ||
+    closingFence[0] !== openingFence[0] ||
+    closingFence.length < openingFence.length
+  ) {
+    return undefined;
+  }
   const starts: number[] = [];
   let at = from;
   for (const line of lines) {
@@ -95,12 +107,6 @@ export class MermaidWidget extends WidgetType {
       .then((svg) => {
         // Strict mode + looksUnsafeSvg; the same shapes the app forbids elsewhere.
         wrapper.innerHTML = svg;
-        const svgEl = wrapper.querySelector("svg");
-        if (svgEl) {
-          svgEl.removeAttribute("height");
-          svgEl.style.maxWidth = "100%";
-          svgEl.style.height = "auto";
-        }
         wrapper.dataset.mermaidState = "rendered";
       })
       .catch(() => {

@@ -43,9 +43,14 @@ export function looksUnsafeSvg(svg: string): boolean {
 }
 
 async function loadMermaid(theme: string): Promise<MermaidApi> {
-  loading ??= import("mermaid").then(
-    (mod) => ((mod as { default?: MermaidApi }).default ?? mod) as MermaidApi,
-  );
+  loading ??= import("mermaid")
+    .then(
+      (mod) => ((mod as { default?: MermaidApi }).default ?? mod) as MermaidApi,
+    )
+    .catch((error: unknown) => {
+      loading = undefined;
+      throw error;
+    });
   const mermaid = await loading;
   if (initializedTheme !== theme) {
     mermaid.initialize({
@@ -68,7 +73,27 @@ async function loadMermaid(theme: string): Promise<MermaidApi> {
  * navigate anywhere (Mermaid keeps `click X href ...` links even in strict mode).
  */
 export function withoutLinks(svg: string): string {
-  return svg.replace(/\s(?:xlink:)?href\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  return svg.replace(
+    /\s(?:xlink:)?href\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
+    "",
+  );
+}
+
+/**
+ * Mermaid shrinks a diagram to the column width (`width="100%"`), which makes
+ * a wide flowchart unreadable. Give the root its own size from the viewBox
+ * instead; the wrapper scrolls sideways when it is wider than the page.
+ */
+export function atNaturalSize(svg: string): string {
+  return svg.replace(/^<svg\b[^>]*>/, (tag) => {
+    const box = tag.match(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/);
+    if (!box) return tag;
+    const width = Math.ceil(Number(box[1]));
+    const height = Math.ceil(Number(box[2]));
+    return tag
+      .replace(/\s(?:width|height|style)="[^"]*"/g, "")
+      .replace(/^<svg/, `<svg width="${width}" height="${height}"`);
+  });
 }
 
 /** Render one diagram to SVG. Throws an Error with a short message. */
@@ -82,5 +107,5 @@ export async function renderMermaid(
   const { svg } = await mermaid.render(id, source);
   if (looksUnsafeSvg(svg))
     throw new Error("the diagram produced markup that is not allowed");
-  return withoutLinks(svg);
+  return atNaturalSize(withoutLinks(svg));
 }

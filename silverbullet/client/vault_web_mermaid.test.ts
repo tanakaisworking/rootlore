@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   isMermaidLanguage,
   looksUnsafeSvg,
+  atNaturalSize,
   mermaidTheme,
   withoutLinks,
 } from "./vault_web_mermaid.ts";
@@ -54,4 +55,13 @@ test("links in a diagram lead nowhere", () => {
   expect(withoutLinks("<svg><a href=/x><text>x</text></a></svg>")).toBe(
     "<svg><a><text>x</text></a></svg>",
   );
+});
+
+test("a wide diagram keeps its own size instead of shrinking to the column", () => {
+  expect(
+    atNaturalSize(
+      '<svg id="m" width="100%" style="max-width: 2300.5px;" viewBox="-8 -8 2300.5 640"><g/></svg>',
+    ),
+  ).toBe('<svg width="2301" height="640" id="m" viewBox="-8 -8 2300.5 640"><g/></svg>');
+  expect(atNaturalSize("<svg><g/></svg>")).toBe("<svg><g/></svg>");
 });

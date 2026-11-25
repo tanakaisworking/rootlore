@@ -88,3 +88,10 @@ test("renderWidgets false leaves the mermaid source alone", () => {
   });
   expect(widgets(state, field)).toHaveLength(0);
 });
+
+test("an unclosed mermaid fence keeps its last source line visible", () => {
+  const doc = "```mermaid\nflowchart LR\nA --> B";
+  const field = fencedCodePlugin(client());
+  const state = EditorState.create({ doc, extensions: [markdown(), field] });
+  expect(widgets(state, field)).toHaveLength(0);
+});
