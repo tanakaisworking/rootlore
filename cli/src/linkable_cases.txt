@@ -1,0 +1,50 @@
+# リンクで開けるノートの場所の例。1行に「ok または no」「タブ」「Vault の中の場所」。
+# cli/src/linkable.rs のテスト（CLI とデスクトップの両方で動く）と、
+# silverbullet/client/vault_web_page_link.test.ts（ok の名前を、画面がそのノートとして読むこと）が読む。
+ok	INDEX.md
+ok	2_Areas/会社/事業の因数分解.md
+ok	日記/2026 11 3.md
+ok	日記/100% 本当?.md
+ok	a+b&c=d.md
+ok	it's (a) note!.md
+ok	report.v2-final.md
+ok	動画/Seedance 2.0プロンプト.md
+ok	v1.2/notes.md
+ok	a..md
+ok	メモ^2.md
+ok	_inbox/todo.md
+ok	apis/list.md
+ok	Library/Custom/x.md
+# .md で終わらない、空、Vault の外や隠しフォルダ
+no	
+no	INDEX
+no	notes.txt
+no	.md
+no	/etc/passwd.md
+no	../secret.md
+no	a/../b.md
+no	a/./b.md
+no	a//b.md
+no	a/.md
+no	.obsidian/x.md
+no	a/.hidden.md
+no	https://example.com/x.md
+# 画面が別のものとして読む名前
+no	a#heading.md
+no	a@12.md
+no	a$anchor.md
+no	a|b.md
+no	a<b>.md
+no	[[a]].md
+no	a]]b.md
+no	^Library/Std/Config.md
+no	a\b.md
+no	photo.png.md
+no	notes.2024.md
+no	a.md.md
+# アプリ自身が使う場所
+no	Library/Std/Rootlore/Home.md
+no	api/gh/repos/me/notes/git/trees/main.md
+no	api/errors.md
+no	_base_fs/Library/Std/Rootlore/Home.md
+no	_headers.md

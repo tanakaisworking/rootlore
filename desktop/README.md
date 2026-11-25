@@ -8,11 +8,11 @@ The title bar uses the macOS transparent style and applies the sidebar backgroun
 
 ## Links that open a note
 
-`rootlore://open?repo=<owner>/<name>&page=<path of the note, with .md>` opens that note in the app. `rootlore link <note>` in the CLI prints the link (`page_links` in `cli/src/main.rs`); `src-tauri/src/page_link.rs` reads it. The two share one example in their tests; change both together.
+`rootlore://open?repo=<owner>/<name>&page=<path of the note, with .md>` opens that note in the app. `rootlore link <note>` in the CLI prints the link (`page_links` in `cli/src/main.rs`); `src-tauri/src/page_link.rs` reads it. Both use the same rule for which notes a link can open (`cli/src/linkable.rs`), and the CLI, the app and the screen (`silverbullet/client/vault_web_page_link.test.ts`) test it against the same examples (`cli/src/linkable_cases.txt`).
 
 Any web page or app can open a `rootlore://` link, so this link does one thing: bring the window to the front and move the bundled screen to `/v/<note>`. It never writes, runs a command, or leaves the local screen.
 
-- `page` must be one note the screen can address: it ends in `.md`, stays inside the vault (no `..`, empty, or hidden segments), is not a bundled `Library/Std/` page, and has no characters the screen would read as a heading, position, or another file (`# @ $ | < >`, a leading `^`, `[[`, an ending like `.png.md`). The name is percent-encoded per segment before it becomes a URL.
+- `page` must be one note the screen can address: it ends in `.md`, stays inside the vault (no `..`, empty, or hidden segments), is not a bundled `Library/Std/` page, does not start with a folder the app uses itself (`api`, `_base_fs`, `_headers`), and has no characters the screen would read as a heading, position, or another file (`# @ $ | < >`, a leading `^`, `[[`, an ending like `.png.md` or `.2024.md`). The name is percent-encoded per segment before it becomes a URL. A raw `+` in the link is refused, because it can mean a space; the CLI writes it as `%2B`. `rootlore link` refuses the same names, so it never prints a link the app would refuse.
 - `repo` is required and must match the connected repository (ignoring case). Otherwise the app opens nothing and says so, so a link for one vault never opens a same-named note in another.
 - A refused link shows a message attached to the window and writes `page-link-rejected` or `page-link-other-repository` to the log; an opened one writes `page-link-open`. The log never contains the link.
 - The note opens by loading its URL, like View → Reload. A draft being edited stays in local storage.

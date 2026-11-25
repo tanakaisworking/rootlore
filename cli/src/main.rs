@@ -6,6 +6,7 @@
 // 送るときは読んだときの版を添え、GitHub で先に変わっていれば3方向でまとめる。同じ所がぶつかったら、
 // GitHub のノートはそのままにして、印付きのまとめを「ノート名.conflicted-日時.md」に残す（何も消さない）。
 
+mod linkable;
 mod net;
 mod update;
 
@@ -752,6 +753,10 @@ fn link(o: &Options) -> Result<()> {
     if !store.state.files.contains_key(&name) {
         return Err(format!("ノートが見つかりません: {name}"));
     }
+    // 画面が別のページとして読む名前は、リンクにしない（開くと、違うノートが出る）
+    if !linkable::linkable(&name) {
+        return Err(format!("この名前のノートは、リンクで開けません（# @ $ | < > を含む名前や、「.2024」のように拡張子に見える終わり方は、画面が別のページとして読みます）: {name}"));
+    }
     let repo = store.state.repo.as_ref().ok_or("接続中のリポジトリが分かりません")?;
     let (app, web) = page_links(&base_url(), repo, &name);
     if o.json {
@@ -1448,10 +1453,10 @@ mod link_tests {
     #[test]
     fn links_open_the_note_in_the_app_and_on_the_web() {
         let repo = Repo { owner: "me".into(), repo: "notes".into(), branch: "main".into() };
-        let (app, web) = page_links("https://rootlore.app", &repo, "2_Areas/会社/事業 計画?.md");
+        let (app, web) = page_links("https://rootlore.app", &repo, "2_Areas/会社/事業 計画?100%+A&B=C.md");
         // desktop/src-tauri/src/page_link.rs のテストが、同じリンクを読めることを確かめている
-        assert_eq!(app, "rootlore://open?repo=me/notes&page=2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F.md");
-        assert_eq!(web, "https://rootlore.app/v/2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F");
+        assert_eq!(app, "rootlore://open?repo=me/notes&page=2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F100%25%2BA%26B%3DC.md");
+        assert_eq!(web, "https://rootlore.app/v/2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F100%25%2BA%26B%3DC");
     }
 }
 

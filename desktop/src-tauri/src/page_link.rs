@@ -6,6 +6,10 @@
 //! 何も読み書きしない（開く処理は main.rs の open_page_link）。
 use tauri::Url;
 
+/// リンクで開けるノートの場所の決まり。CLI と同じファイルを使う（CLI が出さないリンクは、アプリも開かない）
+#[path = "../../../cli/src/linkable.rs"]
+mod linkable;
+
 /// 開くノート。repo は "owner/name"、path は Vault の中の場所（例: 2_Areas/会社/メモ.md）
 #[derive(Debug, PartialEq, Eq)]
 pub struct PageLink {
@@ -26,6 +30,10 @@ pub fn parse(url: &Url) -> Parsed {
     if url.scheme() != "rootlore" || url.host_str() != Some("open") {
         return Parsed::Other;
     }
+    // + は空白とも読めるので、どのノートか決めずに断る（CLI は + を %2B にして出す）
+    if url.query().is_some_and(|query| query.contains('+')) {
+        return Parsed::Invalid;
+    }
     let (mut repo, mut path) = (None, None);
     for (key, value) in url.query_pairs() {
         let slot = match key.as_ref() {
@@ -39,7 +47,7 @@ pub fn parse(url: &Url) -> Parsed {
         }
     }
     match (repo, path) {
-        (Some(repo), Some(path)) if valid_repo(&repo) && valid_path(&path) => Parsed::Page(PageLink { repo, path }),
+        (Some(repo), Some(path)) if valid_repo(&repo) && linkable::linkable(&path) => Parsed::Page(PageLink { repo, path }),
         _ => Parsed::Invalid,
     }
 }
@@ -48,23 +56,6 @@ pub fn parse(url: &Url) -> Parsed {
 fn valid_repo(repo: &str) -> bool {
     let part = |s: &str| !s.is_empty() && s.len() <= 100 && s.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'));
     matches!(repo.split_once('/'), Some((owner, name)) if part(owner) && part(name))
-}
-
-/// 画面が「そのノート1つ」として開ける場所だけを通す。
-/// 画面は URL の名前を silverbullet/plug-api/lib/ref.ts の決まりで読むので、それに合わない名前
-/// （# や @ で見出しや位置の指定になる、末尾が拡張子に見えて別のファイルを指す、など）は、
-/// 別のページを開いてしまう前にここで断る。同梱のページ（Library/Std/）と隠しフォルダも開かない
-fn valid_path(path: &str) -> bool {
-    let Some(name) = path.strip_suffix(".md") else { return false };
-    let looks_like_file = name.rsplit_once('.').is_some_and(|(_, ext)| !ext.is_empty() && ext.bytes().all(|b| b.is_ascii_alphanumeric()));
-    path.len() <= 1024
-        && !path.starts_with("Library/Std/")
-        && !name.starts_with('^')
-        && !name.contains(|c: char| c.is_control() || "@#$|<>\\".contains(c))
-        && !name.contains("[[")
-        && !name.contains("]]")
-        && name.split('/').all(|part| !part.is_empty() && !part.starts_with('.'))
-        && !looks_like_file
 }
 
 /// 接続中のリポジトリのノートか（GitHub は大文字小文字を区別しない）。未接続なら false
@@ -97,8 +88,8 @@ mod tests {
     fn reads_the_link_the_cli_prints() {
         // cli/src/main.rs の page_links のテストと同じリンク
         assert_eq!(
-            parsed("rootlore://open?repo=me/notes&page=2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F.md"),
-            page("me/notes", "2_Areas/会社/事業 計画?.md")
+            parsed("rootlore://open?repo=me/notes&page=2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%20%E8%A8%88%E7%94%BB%3F100%25%2BA%26B%3DC.md"),
+            page("me/notes", "2_Areas/会社/事業 計画?100%+A&B=C.md")
         );
     }
 
@@ -160,6 +151,8 @@ mod tests {
             "rootlore://open?repo=me/notes&page=INDEX.md&page=Other.md",
             "rootlore://open?repo=me/notes&repo=you/notes&page=INDEX.md",
             "rootlore://open?repo=me/notes&url=https://example.com",
+            // + は空白とも読めるので、どちらのノートも開かない
+            "rootlore://open?repo=me/notes&page=a+b.md",
         ] {
             assert_eq!(parsed(url), Parsed::Invalid, "{url}");
         }
@@ -181,6 +174,24 @@ mod tests {
         assert_eq!(url("2_Areas/会社/事業の因数分解.md"), "http://127.0.0.1:37420/v/2_Areas/%E4%BC%9A%E7%A4%BE/%E4%BA%8B%E6%A5%AD%E3%81%AE%E5%9B%A0%E6%95%B0%E5%88%86%E8%A7%A3");
         // 名前の中の ? や % や空白は、名前のまま（クエリや別の % 表記にならない）
         assert_eq!(url("日記/100% 本当?.md"), "http://127.0.0.1:37420/v/%E6%97%A5%E8%A8%98/100%25%20%E6%9C%AC%E5%BD%93%3F");
+    }
+
+    #[test]
+    fn every_linkable_note_reaches_the_screen_under_its_own_name() {
+        let root = std::path::PathBuf::from("/tmp/rootlore-page-link-test");
+        let mut seen = 0;
+        for line in include_str!("../../../cli/src/linkable_cases.txt").lines() {
+            let Some(path) = line.strip_prefix("ok\t") else { continue };
+            let url = local_url("http://127.0.0.1:37420", &PageLink { repo: "me/notes".into(), path: path.into() });
+            assert_eq!(url.origin().ascii_serialization(), "http://127.0.0.1:37420", "{path}");
+            assert!(url.path().starts_with("/v/") && url.query().is_none() && url.fragment().is_none(), "{path}");
+            // 手元のサーバーは、この URL を同じ名前に戻して受け付ける（断ると 404 で真っ白になる）。
+            // その名前のファイルは同梱していないので、画面の入口が返る（local.rs の wants_entry）
+            let file = crate::local::file_for(&root, url.path());
+            assert_eq!(file, Some(root.join(path.strip_suffix(".md").unwrap())), "{path}");
+            seen += 1;
+        }
+        assert!(seen > 10);
     }
 }
 
