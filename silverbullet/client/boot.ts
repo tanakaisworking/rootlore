@@ -20,6 +20,7 @@ import type { BootConfig } from "./types/ui.ts";
 import { BoxProxy } from "./lib/box_proxy.ts";
 import { exportKey, importKey } from "@silverbulletmd/silverbullet/lib/crypto";
 import "./debug.ts";
+import { waitForControl } from "./vault_web_service_worker.ts";
 import { registerVaultWebHome } from "./vault_web_home.ts";
 import { language } from "./vault_web_i18n.ts";
 
@@ -250,7 +251,10 @@ async function bootApp() {
         lastStartNotification = Date.now();
       }
     });
-    navigator.serviceWorker
+    // vault-web: Service Worker を使えない環境では register が失敗する。
+    // 未処理の例外にせず、受け持ちを待つのをやめて、Service Worker なしで起動する
+    let registerError: unknown;
+    const registered = navigator.serviceWorker
       .register(workerURL, {
         type: "module",
         //limit the scope of the service worker to any potential URL prefix
@@ -284,6 +288,11 @@ async function bootApp() {
             });
           }
         });
+        return true;
+      }, (e) => {
+        registerError = e;
+        console.warn("Service worker registration failed", e);
+        return false;
       });
     // vault-web: ノートは Service Worker が GitHub から取る（サーバーは答えない）。
     // 初回の読み込みでは、Service Worker がこのページを受け持つまで待ち、設定を送る
@@ -300,10 +309,7 @@ async function bootApp() {
       void navigator.serviceWorker.ready.then((r) =>
         r.active?.postMessage({ type: "claim" }),
       );
-      const ok = await Promise.race([
-        controlled,
-        new Promise<boolean>((r) => setTimeout(() => r(false), 15000)),
-      ]);
+      const ok = await waitForControl(controlled, registered, 15000);
       if (!ok) {
         if (!sessionStorage.getItem("vw-sw-reload")) {
           sessionStorage.setItem("vw-sw-reload", "1");
@@ -313,7 +319,13 @@ async function bootApp() {
         console.error("[vault-web] Service Worker がページを受け持てませんでした");
       }
       sessionStorage.removeItem("vw-sw-reload");
-      await configureWorker(await navigator.serviceWorker.ready);
+      if (await registered) {
+        await configureWorker(await navigator.serviceWorker.ready);
+      } else {
+        // 登録できないと ready は終わらない。Service Worker のない環境と同じ扱いにする（上の navigator.serviceWorker が無いとき）
+        reportException(registerError);
+        bootConfig!.disableServiceWorker = true;
+      }
     } else {
       sessionStorage.removeItem("vw-sw-reload");
     }
