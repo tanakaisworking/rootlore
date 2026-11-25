@@ -102,42 +102,6 @@ When the browser is on another computer (a server, a VM, or a container reached 
 The CLI sends its requests through the proxy in `HTTPS_PROXY` (or `https_proxy`), except for hosts listed in `NO_PROXY` (or `no_proxy`). It trusts the certificates installed on the system as well as its built-in ones, so a proxy that re-signs HTTPS traffic works when its certificate is installed on the system (on Linux, also through `SSL_CERT_FILE`).
 If your shell says `command not found`, add `~/.local/bin` to your PATH: `export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`.
 
-### Projects
-
-A vault can be the entry point to your projects. Each project is one note, `<projects folder>/<name>/index.md`, with `type: project` in its front matter. Everything else about the project can live next to it.
-
-```markdown
----
-type: project
-repos:
-  - owner/app
-  - owner/website
-site: https://example.com
-drive: https://drive.google.com/drive/folders/…
-release: Push a version tag; CI publishes it.
-people:
-  - Alex
----
-
-# Example
-```
-
-Only `type: project` is required. Keep things that rarely change in the note. Don't write open pull requests, CI results, or versions into it: they go out of date.
-
-```sh
-rootlore project new Example --repo owner/app --site https://example.com
-rootlore project link Example --repo owner/website --drive https://drive.google.com/…
-rootlore project list            # name, repositories, site
-rootlore project show Example    # the note's details, with links
-```
-
-- **Folder.** Projects are read from `Projects/` unless you choose another folder. Set it once with `rootlore project dir work/projects` (for example, `2_Areas` if you organize your vault with PARA), or pass `--projects-dir` for one command. The setting is stored on this computer.
-- **Links only.** `show` prints what the note says, with the GitHub page of each repository. It doesn't read those repositories: Rootlore can access only the repository that holds your vault, so releases, pull requests, and other live status are not shown.
-- **Writing.** `new` refuses to touch a note that already exists and creates one with the headings Overview, Audience, Where things live, and Decisions. `link` adds repositories and sets `site` or `drive` in the front matter without changing the body. It saves the same way as `rootlore write`: newer changes on GitHub are merged, and if both changed the same lines, the note is left as it is and the command exits with code 3.
-- **For scripts.** Every command except `dir` accepts `--json`.
-
-Run `rootlore project help` for all options.
-
 ## Data and permissions
 
 - Rootlore does not store note bodies on its servers. Notes travel only between GitHub and your browser.
