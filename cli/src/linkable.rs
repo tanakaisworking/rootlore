@@ -6,8 +6,17 @@
 //! （silverbullet/client/vault_web_page_link.test.ts）も同じ例で、通した名前がそのノートとして読まれることを確かめる。
 
 /// アプリ自身が /v/ の下で使う場所（API の口と同梱ファイル。worker/index.ts、desktop/src-tauri/src/local.rs）。
-/// 同じ名前で始まるノートは、URL にするとそちらが返る
+/// 同じ名前で始まるノートは、URL にするとそちらが返る。macOS の既定のファイルシステムは
+/// 大文字小文字を区別しないため、予約名も区別しない
 const RESERVED: [&str; 3] = ["api", "_base_fs", "_headers"];
+
+/// 画面や同梱ファイルが使う名前か（先頭の1フォルダ、または Library/Std）
+fn reserved(name: &str) -> bool {
+    let mut parts = name.split('/');
+    let first = parts.next().unwrap_or("");
+    RESERVED.iter().any(|part| part.eq_ignore_ascii_case(first))
+        || (first.eq_ignore_ascii_case("Library") && parts.next().is_some_and(|part| part.eq_ignore_ascii_case("Std")))
+}
 
 /// path（Vault の中の場所。例: 2_Areas/会社/メモ.md）を、リンクで開けるか
 pub fn linkable(path: &str) -> bool {
@@ -15,8 +24,7 @@ pub fn linkable(path: &str) -> bool {
     // 末尾が拡張子に見える名前（メモ.2024、photo.png）は、画面が .md を補わずに別のファイルとして読む
     let looks_like_file = name.rsplit_once('.').is_some_and(|(_, ext)| !ext.is_empty() && ext.bytes().all(|b| b.is_ascii_alphanumeric()));
     path.len() <= 1024
-        && !path.starts_with("Library/Std/")
-        && !RESERVED.contains(&name.split('/').next().unwrap_or(""))
+        && !reserved(name)
         // # @ $ は見出し・位置・目印の指定に、先頭の ^ は同梱ページの指定になる。| < > [[ ]] は名前として読めない
         && !name.starts_with('^')
         && !name.contains(|c: char| c.is_control() || "@#$|<>\\".contains(c))

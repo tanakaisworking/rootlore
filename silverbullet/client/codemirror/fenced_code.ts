@@ -12,6 +12,7 @@ import { IFrameWidget } from "./iframe_widget.ts";
 import { LoadingWidget } from "./loading_widget.ts";
 import { LuaWidget } from "./lua_widget.ts";
 import { renderLuaCallback } from "../space_lua/render_widget.ts";
+import { mermaidDecorations } from "./mermaid_widget.ts";
 
 export function fencedCodePlugin(client: Client) {
   return decoratorStateField((state: EditorState) => {
@@ -25,6 +26,13 @@ export function fencedCodePlugin(client: Client) {
           const text = state.sliceDoc(from, to);
           const [_, lang] = text.match(/^(?:```+|~~~+)(\S+)?/)!;
           const renderMode = widgetRenderMode(client);
+
+          // Rootlore: ```mermaid is drawn by the bundled renderer (no note Lua, no external script)
+          const mermaid = mermaidDecorations(client, from, text, lang, renderMode);
+          if (mermaid) {
+            widgets.push(...mermaid);
+            return false;
+          }
 
           const luaWidgetDef = lang
             ? client.clientSystem.luaCodeWidgets.get(lang)
