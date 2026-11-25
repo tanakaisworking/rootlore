@@ -6,7 +6,9 @@
 // 送るときは読んだときの版を添え、GitHub で先に変わっていれば3方向でまとめる。同じ所がぶつかったら、
 // GitHub のノートはそのままにして、印付きのまとめを「ノート名.conflicted-日時.md」に残す（何も消さない）。
 
+mod frontmatter;
 mod net;
+mod project;
 mod update;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -1307,6 +1309,7 @@ const HELP: &str = "rootlore — Rootlore の CLI。GitHub が正本の Vault �
   rootlore status                ログイン、ノートの件数、写しの場所
   rootlore path                  写しの場所（rg などで直接探すとき。読むだけにすること）
   rootlore update                配布中の新しい版に入れ替える（アプリに入っている rootlore はアプリの更新で新しくなる）
+  rootlore project …             プロジェクトの台帳: list・show・new・link・dir（rootlore project help）
 
 書く（本文は標準入力で渡す）:
   rootlore write <場所> --base <版>  ノートを丸ごと書く。版は read --json の sha（まだないノートは --base new か省く）
@@ -1355,6 +1358,7 @@ fn run(args: Vec<String>) -> Result<()> {
             Ok(())
         }
         "conflicts" => conflicts(&parse_options(rest)?),
+        "project" => project::run(rest),
         "pull" => {
             let store = pull(&mut Api::new()?)?;
             println!("{} 件", store.state.files.len());
