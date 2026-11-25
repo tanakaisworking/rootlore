@@ -15,6 +15,8 @@ ok	メモ^2.md
 ok	_inbox/todo.md
 ok	apis/list.md
 ok	Library/Custom/x.md
+ok	Library/Std.md
+ok	library/std.md
 # .md で終わらない、空、Vault の外や隠しフォルダ
 no	
 no	INDEX

@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import {
+  atNaturalSize,
   isMermaidLanguage,
   looksUnsafeSvg,
-  atNaturalSize,
   mermaidTheme,
   withoutLinks,
 } from "./vault_web_mermaid.ts";
@@ -26,6 +26,7 @@ test("markup that could run or fetch is refused", () => {
   ).toBe(true);
   expect(looksUnsafeSvg("<svg><iframe src='/x'></iframe></svg>")).toBe(true);
   expect(looksUnsafeSvg("<svg><rect onload='x()'></rect></svg>")).toBe(true);
+  expect(looksUnsafeSvg("<svg><text> ongoing = 3</text></svg>")).toBe(false);
   expect(looksUnsafeSvg("<svg><a href='javascript:alert(1)'></a></svg>")).toBe(
     true,
   );
@@ -49,11 +50,18 @@ test("markup that could run or fetch is refused", () => {
 test("links in a diagram lead nowhere", () => {
   expect(
     withoutLinks(
-      '<svg><a href="https://example.com/x" xlink:href=\'/v/page\'><text>x</text></a></svg>',
+      "<svg><a href=\"https://example.com/x\" xlink:href='/v/page'><text>x</text></a></svg>",
     ),
   ).toBe("<svg><a><text>x</text></a></svg>");
   expect(withoutLinks("<svg><a href=/x><text>x</text></a></svg>")).toBe(
     "<svg><a><text>x</text></a></svg>",
+  );
+  expect(
+    withoutLinks(
+      '<svg><text>ログ href=1 を見る</text><use href="#shape"/><image href="/x.png"/></svg>',
+    ),
+  ).toBe(
+    '<svg><text>ログ href=1 を見る</text><use href="#shape"/><image href="/x.png"/></svg>',
   );
 });
 
@@ -62,6 +70,8 @@ test("a wide diagram keeps its own size instead of shrinking to the column", () 
     atNaturalSize(
       '<svg id="m" width="100%" style="max-width: 2300.5px;" viewBox="-8 -8 2300.5 640"><g/></svg>',
     ),
-  ).toBe('<svg width="2301" height="640" id="m" viewBox="-8 -8 2300.5 640"><g/></svg>');
+  ).toBe(
+    '<svg width="2301" height="640" id="m" viewBox="-8 -8 2300.5 640"><g/></svg>',
+  );
   expect(atNaturalSize("<svg><g/></svg>")).toBe("<svg><g/></svg>");
 });

@@ -15,7 +15,9 @@ fn reserved(name: &str) -> bool {
     let mut parts = name.split('/');
     let first = parts.next().unwrap_or("");
     RESERVED.iter().any(|part| part.eq_ignore_ascii_case(first))
-        || (first.eq_ignore_ascii_case("Library") && parts.next().is_some_and(|part| part.eq_ignore_ascii_case("Std")))
+        || (first.eq_ignore_ascii_case("Library")
+            && parts.next().is_some_and(|part| part.eq_ignore_ascii_case("Std"))
+            && parts.next().is_some())
 }
 
 /// path（Vault の中の場所。例: 2_Areas/会社/メモ.md）を、リンクで開けるか

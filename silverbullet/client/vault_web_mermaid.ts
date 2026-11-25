@@ -4,8 +4,10 @@
 // (Library/silverbullet-diagram) runs Space Lua in the note and imports Mermaid
 // from esm.sh; Rootlore does neither (CSP `script-src 'self'`, and note Lua is
 // not trusted), so the renderer lives in the client bundle and Mermaid is a lazy
-// chunk served from our own origin. It is fetched the first time a page shows a
-// diagram, so pages without one do not pay for it.
+// chunk served from our own origin. Pages without diagrams do not execute it;
+// the Service Worker still precaches the client chunks so diagrams work offline.
+
+import { reportException } from "./vault_web_error_reports.ts";
 
 type MermaidApi = {
   initialize: (config: Record<string, unknown>) => void;
@@ -37,7 +39,7 @@ export function looksUnsafeSvg(svg: string): boolean {
     /<script[\s>]/i.test(svg) ||
     /<foreignobject[\s>]/i.test(svg) ||
     /<iframe[\s>]/i.test(svg) ||
-    /\son[a-z]+\s*=/i.test(svg) ||
+    /<[^>]*\son[a-z]+\s*=/i.test(svg) ||
     /(?:href|src)\s*=\s*["']?\s*(?:javascript|data|vbscript):/i.test(svg)
   );
 }
@@ -49,6 +51,7 @@ async function loadMermaid(theme: string): Promise<MermaidApi> {
     )
     .catch((error: unknown) => {
       loading = undefined;
+      reportException(error);
       throw error;
     });
   const mermaid = await loading;
@@ -73,9 +76,8 @@ async function loadMermaid(theme: string): Promise<MermaidApi> {
  * navigate anywhere (Mermaid keeps `click X href ...` links even in strict mode).
  */
 export function withoutLinks(svg: string): string {
-  return svg.replace(
-    /\s(?:xlink:)?href\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
-    "",
+  return svg.replace(/<a\b[^>]*>/gi, (tag) =>
+    tag.replace(/\s(?:xlink:)?href\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, ""),
   );
 }
 
