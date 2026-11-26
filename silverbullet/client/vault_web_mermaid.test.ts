@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import {
-  atNaturalSize,
+  fitToWidth,
   isMermaidLanguage,
   looksUnsafeSvg,
   mermaidTheme,
@@ -65,13 +65,13 @@ test("links in a diagram lead nowhere", () => {
   );
 });
 
-test("a wide diagram keeps its own size instead of shrinking to the column", () => {
+test("a diagram fits the page width and is never stretched past its own size", () => {
   expect(
-    atNaturalSize(
-      '<svg id="m" width="100%" style="max-width: 2300.5px;" viewBox="-8 -8 2300.5 640"><g/></svg>',
+    fitToWidth(
+      '<svg id="m" width="2301" height="640" style="max-width: 2300.5px;" viewBox="-8 -8 2300.5 640"><g/></svg>',
     ),
   ).toBe(
-    '<svg width="2301" height="640" id="m" viewBox="-8 -8 2300.5 640"><g/></svg>',
+    '<svg width="100%" style="max-width: 2301px" id="m" viewBox="-8 -8 2300.5 640"><g/></svg>',
   );
-  expect(atNaturalSize("<svg><g/></svg>")).toBe("<svg><g/></svg>");
+  expect(fitToWidth("<svg><g/></svg>")).toBe("<svg><g/></svg>");
 });

@@ -1030,11 +1030,11 @@ $comment-border: 1px;
     // CodeMirror counts padding, but not vertical margins, in a block widget's height.
     padding: 0.4em 0;
     max-width: 100%;
-    overflow-x: auto;
 
     svg {
       display: block;
-      max-width: none;
+      max-width: 100%;
+      height: auto;
     }
   }
 

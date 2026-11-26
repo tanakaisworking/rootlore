@@ -82,19 +82,18 @@ export function withoutLinks(svg: string): string {
 }
 
 /**
- * Mermaid shrinks a diagram to the column width (`width="100%"`), which makes
- * a wide flowchart unreadable. Give the root its own size from the viewBox
- * instead; the wrapper scrolls sideways when it is wider than the page.
+ * Fit the diagram to the page width: never wider than the column, never
+ * stretched past its own size. The height follows the width, so a wide
+ * flowchart shrinks instead of running off the window.
  */
-export function atNaturalSize(svg: string): string {
+export function fitToWidth(svg: string): string {
   return svg.replace(/^<svg\b[^>]*>/, (tag) => {
-    const box = tag.match(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/);
+    const box = tag.match(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) [\d.]+"/);
     if (!box) return tag;
     const width = Math.ceil(Number(box[1]));
-    const height = Math.ceil(Number(box[2]));
     return tag
       .replace(/\s(?:width|height|style)="[^"]*"/g, "")
-      .replace(/^<svg/, `<svg width="${width}" height="${height}"`);
+      .replace(/^<svg/, `<svg width="100%" style="max-width: ${width}px"`);
   });
 }
 
@@ -109,5 +108,5 @@ export async function renderMermaid(
   const { svg } = await mermaid.render(id, source);
   if (looksUnsafeSvg(svg))
     throw new Error("the diagram produced markup that is not allowed");
-  return atNaturalSize(withoutLinks(svg));
+  return fitToWidth(withoutLinks(svg));
 }
