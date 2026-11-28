@@ -541,7 +541,12 @@ fn main() {
             let state = std::sync::Arc::new(local::AppState {
                 root,
                 data_dir: data_dir.clone(),
-                mode: Mutex::new(connection.as_ref().map(|c| c.mode).unwrap_or(store::Mode::Token)),
+                // 環境変数のトークンがあれば、前回 GitHub App でつないでいても、トークン直方式で開く（Keychain に触らない）
+                mode: Mutex::new(if store::env_token().is_some() {
+                    store::Mode::Token
+                } else {
+                    connection.as_ref().map(|c| c.mode).unwrap_or(store::Mode::Token)
+                }),
                 token: Mutex::new(token),
                 // GitHub App 方式のログインは Keychain から戻す（以前は残さず、開き直すたびに未接続になっていた）
                 cookie: Mutex::new(match connection.as_ref().map(|c| c.mode) {
