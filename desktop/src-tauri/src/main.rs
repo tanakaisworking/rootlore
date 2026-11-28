@@ -598,6 +598,14 @@ fn main() {
             #[cfg(target_os = "macos")]
             let window = window.hidden_title(true).title_bar_style(tauri::TitleBarStyle::Transparent);
             window.build()?;
+            // アプリを起動させたリンクは setup より先に届くので、on_open_url では受け取れない。
+            // プラグインが残している分（get_current）を、窓ができたここで開く
+            for url in app.deep_link().get_current().ok().flatten().unwrap_or_default() {
+                let parsed = page_link::parse(&url);
+                if parsed != page_link::Parsed::Other {
+                    guard::run("page-link-at-launch", || open_page_link(app.handle(), parsed));
+                }
+            }
             let token = mcp_token(app.handle());
             write_mcp_config(app.handle(), &token);
             mcp::start(app.handle().clone(), token);
