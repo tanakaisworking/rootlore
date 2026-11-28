@@ -6,6 +6,22 @@ export type Release = { version: string; date: string; ja: string[]; en: string[
 
 export const releases: Release[] = [
   {
+    version: "0.0.16",
+    date: "2026-11-28",
+    ja: [
+      "rootlore link が出すリンクを開くと、Mac アプリでそのノートが開くようにしました。",
+      "ノートの中の Mermaid の図を、図として表示するようにしました。幅の広い図は画面の幅に収まります。",
+      "スマホでサイドバーを開いたときに、キーボードが出ないようにしました。フォルダはタップで開閉でき、外側をタップするとサイドバーが閉じます。",
+      "オフライン用の仕組みが使えないブラウザで、起動時にエラーが出ていた問題を直しました。",
+    ],
+    en: [
+      "Open a note in the Mac app from a link: links printed by rootlore link open that note in the app.",
+      "Mermaid diagrams in notes now appear as diagrams, and wide diagrams shrink to fit the page width.",
+      "On phones, opening the sidebar no longer brings up the keyboard; tap a folder to open or close it, and tap outside to close the sidebar.",
+      "Fixed an error at startup in browsers where offline support is unavailable.",
+    ],
+  },
+  {
     version: "0.0.15",
     date: "2026-11-18",
     ja: [
