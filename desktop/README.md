@@ -52,6 +52,10 @@ The app **bundles the UI** instead of loading the hosted site. It copies the out
 Both use the same sign-in screen (`/.auth`). The token field appears only in the locally running app; the client checks whether `/connect/available` exists.
 
 - The token is stored in the macOS Keychain. It is never exposed to page JavaScript.
+- For development and automated checks, set `ROOTLORE_GITHUB_TOKEN` in the app's environment. The app then connects with the direct token and never reads, writes, or deletes Keychain items, so no Keychain prompt appears. The environment variable wins over a token entered in the form and over a previous GitHub App sign-in. The repository still comes from the saved connection (`connection.json`); connect once from the form if there is none. Start the app with the variable in one of these ways:
+  - `ROOTLORE_GITHUB_TOKEN="$(gh auth token)" Rootlore.app/Contents/MacOS/rootlore-desktop`
+  - `open --env "ROOTLORE_GITHUB_TOKEN=$(gh auth token)" -a Rootlore.app "rootlore://open?repo=…&page=…"` opens a note from a link while the app is not running. `open --env ROOTLORE_GITHUB_TOKEN` without `=value` does not pass the value, and the app falls back to the Keychain.
+  - A link clicked in another app starts Rootlore without your shell's environment. For that case the variable must be in the login session's environment (for example `launchctl setenv`), or the app falls back to the Keychain.
 - The relay accepts only a fixed set of paths for the connected repository (same as `worker/proxy.ts`). Everything else returns 403.
 - Host and Origin are checked so other sites cannot call the relay.
 
